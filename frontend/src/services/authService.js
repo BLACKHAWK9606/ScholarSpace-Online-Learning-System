@@ -9,11 +9,12 @@ const instance = axios.create({
   }
 });
 
-// Add interceptor to include token in all requests
+// Add interceptor to include token in requests, but exclude public auth endpoints
 instance.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('token');
-    if (token) {
+    const publicEndpoints = ['login', 'register', 'forgot-password', 'reset-password'];
+    if (token && !publicEndpoints.includes(config.url)) {
       config.headers['Authorization'] = `Bearer ${token}`;
     }
     return config;

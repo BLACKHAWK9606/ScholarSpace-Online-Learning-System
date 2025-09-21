@@ -64,10 +64,24 @@ public class JwtFilter extends OncePerRequestFilter {
                 Optional<User> userOptional = userRepository.findByEmail(userEmail);
                 
                 if (userOptional.isPresent() && jwtService.validateToken(jwt, userOptional.get())) {
+                    User user = userOptional.get();
+                    
+                    // FIXED: Extract role from JWT and ensure ROLE_ prefix
                     String role = jwtService.extractClaim(jwt, claims -> 
                         claims.get("role", String.class));
                     
-                    SimpleGrantedAuthority authority = new SimpleGrantedAuthority(role);
+                    // Ensure role has ROLE_ prefix for Spring Security
+                    String springRole = role;
+                    if (role != null && !role.startsWith("ROLE_")) {
+                        springRole = "ROLE_" + role;
+                    }
+                    
+                    // FALLBACK: If JWT doesn't have role, use role from User entity
+                    if (springRole == null) {
+                        springRole = "ROLE_" + user.getRole().name();
+                    }
+                    
+                    SimpleGrantedAuthority authority = new SimpleGrantedAuthority(springRole);
                     
                     UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
                         userDetails,
@@ -75,12 +89,18 @@ public class JwtFilter extends OncePerRequestFilter {
                         Collections.singletonList(authority)
                     );
                     
+                    // Add user info to authentication details for easy access
                     authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                     SecurityContextHolder.getContext().setAuthentication(authToken);
+                    
+                    // Debug logging (remove in production)
+                    logger.debug("Authentication successful for user: " + userEmail + " with role: " + springRole);
                 }
             }
-        } catch (UsernameNotFoundException e) {
-            logger.error("JWT Authentication Error", e);
+        } catch (Exception e) {
+            logger.error("JWT Authentication Error for token: " + jwt.substring(0, Math.min(jwt.length(), 20)) + "...", e);
+            // Clear security context on any error
+            SecurityContextHolder.clearContext();
         }
         
         filterChain.doFilter(request, response);

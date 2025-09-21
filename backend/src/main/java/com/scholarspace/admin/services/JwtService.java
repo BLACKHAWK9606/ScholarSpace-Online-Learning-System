@@ -28,7 +28,11 @@ public class JwtService {
         Key key = Keys.hmacShaKeyFor(jwtProperties.getSecret().getBytes(StandardCharsets.UTF_8));
         
         Map<String, Object> claims = new HashMap<>();
+        // Store role without ROLE_ prefix in JWT (consistent with your current approach)
         claims.put("role", user.getRole().toString());
+        // Store additional user info for convenience
+        claims.put("userId", user.getUserId());
+        claims.put("name", user.getName());
         
         return Jwts.builder()
                 .setClaims(claims)
@@ -45,6 +49,18 @@ public class JwtService {
     
     public Date extractExpiration(String token) {
         return extractClaim(token, Claims::getExpiration);
+    }
+    
+    public String extractRole(String token) {
+        return extractClaim(token, claims -> claims.get("role", String.class));
+    }
+    
+    public Long extractUserId(String token) {
+        return extractClaim(token, claims -> claims.get("userId", Long.class));
+    }
+    
+    public String extractName(String token) {
+        return extractClaim(token, claims -> claims.get("name", String.class));
     }
     
     public <T> T extractClaim(String token, Function<Claims, T> claimsResolver) {
@@ -67,6 +83,9 @@ public class JwtService {
     
     public Boolean validateToken(String token, User user) {
         final String username = extractUsername(token);
-        return (username.equals(user.getEmail()) && !isTokenExpired(token));
+        final String role = extractRole(token);
+        return (username.equals(user.getEmail()) && 
+                role.equals(user.getRole().toString()) && 
+                !isTokenExpired(token));
     }
 }
