@@ -5,6 +5,8 @@ import com.scholarspace.admin.models.User;
 import com.scholarspace.admin.services.UserService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.List;
@@ -40,6 +42,23 @@ public class UserController {
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().build();
         }
+    }
+
+    @GetMapping("/profile")
+    public ResponseEntity<?> getCurrentUserProfile() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !authentication.isAuthenticated()) {
+            return ResponseEntity.status(401).body(Map.of("error", "User not authenticated"));
+        }
+        
+        String email = authentication.getName();
+        Optional<User> user = userService.getUserByEmail(email);
+        
+        if (user.isEmpty()) {
+            return ResponseEntity.notFound().build();
+        }
+        
+        return ResponseEntity.ok(user.get());
     }
 
     @PutMapping("/{id}/activate")
@@ -83,8 +102,6 @@ public class UserController {
             user.setName(userDetails.getName());
         }
         
-        // Email cannot be changed as it's used for login
-        
         if (userDetails.getRole() != null) {
             user.setRole(userDetails.getRole());
         }
@@ -102,7 +119,7 @@ public class UserController {
             String roleStr = (String) userRequest.get("role");
             Boolean isActive = (Boolean) userRequest.get("isActive");
             
-            Role role = Role.STUDENT; // Default role
+            Role role = Role.STUDENT;
             if (roleStr != null && !roleStr.isEmpty()) {
                 try {
                     role = Role.valueOf(roleStr.toUpperCase());
@@ -113,7 +130,6 @@ public class UserController {
             
             User user = userService.registerUser(name, email, password, role);
             
-            // Set active status if provided
             if (isActive != null && !isActive) {
                 userService.deactivateUser(user.getUserId());
                 user.setActive(false);

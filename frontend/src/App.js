@@ -21,6 +21,9 @@ import ManageDepartments from './components/Admin/ManageDepartments';
 import CourseAssignment from './components/Admin/CourseAssignment';
 import EnrollmentApproval from './components/Admin/EnrollmentApproval';
 
+// Import student components
+import CourseRegistration from './components/Student/CourseRegistration';
+
 // Import context providers
 import { AuthProvider } from './contexts/AuthContext';
 
@@ -116,6 +119,16 @@ function App() {
                 element={
                   <PrivateRoute allowedRoles={['student']}>
                     <StudentDashboard />
+                  </PrivateRoute>
+                } 
+              />
+
+              {/* Student Course Registration Route */}
+              <Route 
+                path="/student/courses/register" 
+                element={
+                  <PrivateRoute allowedRoles={['student']}>
+                    <CourseRegistration />
                   </PrivateRoute>
                 } 
               />

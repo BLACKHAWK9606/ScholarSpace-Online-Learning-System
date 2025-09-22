@@ -23,6 +23,12 @@ api.interceptors.request.use(
   }
 );
 
+// Common API calls
+const commonService = {
+  // Get current user profile
+  getCurrentUserProfile: () => api.get('users/profile'),
+};
+
 // Admin API calls
 const adminService = {
   // Dashboard statistics
@@ -296,4 +302,4 @@ const studentService = {
   }
 };
 
-export { adminService, instructorService, studentService };
+export { commonService, adminService, instructorService, studentService };

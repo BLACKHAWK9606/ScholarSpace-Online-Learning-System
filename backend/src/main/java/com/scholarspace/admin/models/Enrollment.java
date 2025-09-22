@@ -34,7 +34,7 @@ public class Enrollment {
     // Default constructor
     public Enrollment() {
         this.enrollmentDate = LocalDateTime.now();
-        this.status = EnrollmentStatus.ACTIVE;
+        this.status = EnrollmentStatus.PENDING;
         this.createdAt = LocalDateTime.now();
     }
     
@@ -43,7 +43,7 @@ public class Enrollment {
         this.course = course;
         this.student = student;
         this.enrollmentDate = LocalDateTime.now();
-        this.status = EnrollmentStatus.ACTIVE;
+        this.status = EnrollmentStatus.PENDING;
         this.createdAt = LocalDateTime.now();
     }
     

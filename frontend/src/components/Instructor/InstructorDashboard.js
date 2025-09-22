@@ -8,7 +8,7 @@ import {
   FaBook, FaClipboardList, FaFileUpload, FaUser,
   FaGraduationCap, FaCalendarAlt, FaBell, FaEllipsisV
 } from 'react-icons/fa';
-import { instructorService } from '../../services/api';
+import { commonService, instructorService } from '../../services/api';
 import './InstructorDashboard.css'; // We'll create this file for custom styling
 
 function InstructorDashboard() {
@@ -28,6 +28,10 @@ function InstructorDashboard() {
   useEffect(() => {
     const fetchInstructorData = async () => {
       try {
+        // Fetch current user profile
+        const userProfileResponse = await commonService.getCurrentUserProfile();
+        const currentUser = userProfileResponse.data;
+        
         // Fetch courses assigned to the instructor
         const coursesResponse = await instructorService.getInstructorCourses();
         
@@ -51,12 +55,13 @@ function InstructorDashboard() {
           { id: 3, studentName: 'Robert Johnson', assignment: 'Quiz 1', course: 'Programming Fundamentals', submittedOn: '2023-04-06', status: 'graded' }
         ]);
         
+        // Use real user data instead of hardcoded values
         setInstructorProfile({
-          name: 'Dr. Sarah Wilson',
-          department: 'Computer Science',
+          name: currentUser.name,
+          department: 'Computer Science', // TODO: Get from instructor profile
           courses: coursesResponse.data ? coursesResponse.data.length : 0,
-          students: 90,
-          avgRating: 4.8
+          students: 90, // TODO: Calculate from enrollments
+          avgRating: 4.8 // TODO: Get from ratings system
         });
         
         setIsLoading(false);

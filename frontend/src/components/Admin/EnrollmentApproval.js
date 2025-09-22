@@ -4,7 +4,8 @@ import {
   Spinner, Alert, Dropdown
 } from 'react-bootstrap';
 import { FaCheck, FaTimes, FaEllipsisV, FaEye } from 'react-icons/fa';
-import { adminService } from '../../services/api';
+import { adminService } from '../../services/adminService';
+import NotificationToast from '../common/NotificationToast';
 
 function EnrollmentApproval() {
   // State for enrollments and UI
@@ -12,6 +13,7 @@ function EnrollmentApproval() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [processingId, setProcessingId] = useState(null);
+  const [notification, setNotification] = useState({ show: false, type: '', title: '', message: '' });
 
   // Fetch pending enrollments when component mounts
   useEffect(() => {
@@ -41,9 +43,22 @@ function EnrollmentApproval() {
       // Remove the approved enrollment from the list
       setPendingEnrollments(pendingEnrollments.filter(e => e.enrollmentId !== enrollmentId));
       setError(null);
+      setNotification({
+        show: true,
+        type: 'success',
+        title: 'Enrollment Approved',
+        message: 'Student enrollment has been approved successfully.'
+      });
     } catch (err) {
       console.error("Error approving enrollment:", err);
-      setError("Failed to approve enrollment. Please try again.");
+      const errorMessage = "Failed to approve enrollment. Please try again.";
+      setError(errorMessage);
+      setNotification({
+        show: true,
+        type: 'error',
+        title: 'Approval Failed',
+        message: errorMessage
+      });
     } finally {
       setProcessingId(null);
     }
@@ -58,9 +73,22 @@ function EnrollmentApproval() {
         // Remove the rejected enrollment from the list
         setPendingEnrollments(pendingEnrollments.filter(e => e.enrollmentId !== enrollmentId));
         setError(null);
+        setNotification({
+          show: true,
+          type: 'warning',
+          title: 'Enrollment Rejected',
+          message: 'Student enrollment request has been rejected.'
+        });
       } catch (err) {
         console.error("Error rejecting enrollment:", err);
-        setError("Failed to reject enrollment. Please try again.");
+        const errorMessage = "Failed to reject enrollment. Please try again.";
+        setError(errorMessage);
+        setNotification({
+          show: true,
+          type: 'error',
+          title: 'Rejection Failed',
+          message: errorMessage
+        });
       } finally {
         setProcessingId(null);
       }
@@ -130,17 +158,17 @@ function EnrollmentApproval() {
                     <td>
                       <div className="d-flex align-items-center">
                         <div className="student-avatar me-2">
-                          {enrollment.student.firstName.charAt(0)}{enrollment.student.lastName.charAt(0)}
+                          {enrollment.student.name.charAt(0)}
                         </div>
                         <div>
-                          <div className="fw-bold">{enrollment.student.firstName} {enrollment.student.lastName}</div>
+                          <div className="fw-bold">{enrollment.student.name}</div>
                           <small className="text-muted">{enrollment.student.email}</small>
                         </div>
                       </div>
                     </td>
                     <td>
-                      <div className="fw-bold">{enrollment.course.courseCode}</div>
-                      <div>{enrollment.course.courseName}</div>
+                      <div className="fw-bold">{enrollment.course.code}</div>
+                      <div>{enrollment.course.title}</div>
                     </td>
                     <td>
                       {formatDate(enrollment.enrollmentDate)}
@@ -173,7 +201,7 @@ function EnrollmentApproval() {
                               <Dropdown.Item onClick={() => handleViewStudent(enrollment.student.userId)}>
                                 <FaEye className="me-2" /> View Student
                               </Dropdown.Item>
-                              <Dropdown.Item onClick={() => handleViewCourse(enrollment.course.courseId)}>
+                              <Dropdown.Item onClick={() => handleViewCourse(enrollment.course.id)}>
                                 <FaEye className="me-2" /> View Course
                               </Dropdown.Item>
                             </Dropdown.Menu>
@@ -201,6 +229,15 @@ function EnrollmentApproval() {
           font-weight: bold;
         }
       `}</style>
+
+      {/* Notification Toast */}
+      <NotificationToast
+        show={notification.show}
+        type={notification.type}
+        title={notification.title}
+        message={notification.message}
+        onClose={() => setNotification({ ...notification, show: false })}
+      />
     </Container>
   );
 }

@@ -8,10 +8,14 @@ import {
   FaBook, FaClipboardList, FaUserGraduate, FaCalendarAlt, 
   FaBell, FaClock, FaCheckCircle, FaTrophy, FaEllipsisV
 } from 'react-icons/fa';
-import { studentService } from '../../services/api';
+import { commonService, studentService } from '../../services/api';
+import { studentService as studentServiceNew } from '../../services/studentService';
+import { useAuth } from '../../contexts/AuthContext';
 import './StudentDashboard.css'; // We'll create this file for custom styling
 
 function StudentDashboard() {
+  const { user } = useAuth();
+  
   // State to store student's registered and available courses
   const [registeredCourses, setRegisteredCourses] = useState([]);
   const [availableCourses, setAvailableCourses] = useState([]);
@@ -25,19 +29,33 @@ function StudentDashboard() {
   const [error, setError] = useState(null);
   const [activeTab, setActiveTab] = useState('overview');
 
-  // Fetch student data when component mounts
-  useEffect(() => {
-    const fetchStudentData = async () => {
+  // Function to fetch student data
+  const fetchStudentData = async () => {
       try {
-        // Fetch registered courses
-        const registeredResponse = await studentService.getRegisteredCourses();
+        // Fetch all enrollments and available courses
+        const [allEnrollments, availableResponse] = await Promise.all([
+          studentServiceNew.getMyEnrollments(),
+          studentServiceNew.getAvailableCourses()
+        ]);
         
-        // Fetch available courses
-        const availableResponse = await studentService.getAvailableCourses();
+        // Separate active courses and create notifications for status changes
+        const activeCourses = allEnrollments
+          .filter(enrollment => enrollment.status === 'ACTIVE')
+          .map(enrollment => enrollment.course);
+        
+        // Create notifications for enrollment status
+        const enrollmentNotifications = allEnrollments
+          .filter(enrollment => enrollment.status === 'PENDING')
+          .map(enrollment => ({
+            id: enrollment.enrollmentId,
+            type: 'enrollment',
+            message: `Enrollment request for ${enrollment.course.title} is pending approval`,
+            time: new Date(enrollment.enrollmentDate).toLocaleDateString()
+          }));
         
         // Update state with fetched data
-        setRegisteredCourses(registeredResponse.data || []);
-        setAvailableCourses(availableResponse.data || []);
+        setRegisteredCourses(activeCourses || []);
+        setAvailableCourses(availableResponse || []);
         
         // Mock data for new UI elements
         setUpcomingAssignments([
@@ -57,11 +75,15 @@ function StudentDashboard() {
           { id: 3, course: 'Web Development', progress: 60, modules: 12, completed: 7.2 }
         ]);
         
-        setNotifications([
-          { id: 1, type: 'assignment', message: 'New assignment posted: Programming Assignment 3', time: '2 hours ago' },
-          { id: 2, type: 'grade', message: 'You received a grade: 92/100 on Programming Assignment 2', time: '1 day ago' },
-          { id: 3, type: 'course', message: 'New material available in Web Development', time: '2 days ago' }
-        ]);
+        // Combine enrollment notifications with other notifications
+        const allNotifications = [
+          ...enrollmentNotifications,
+          { id: 'assign1', type: 'assignment', message: 'New assignment posted: Programming Assignment 3', time: '2 hours ago' },
+          { id: 'grade1', type: 'grade', message: 'You received a grade: 92/100 on Programming Assignment 2', time: '1 day ago' },
+          { id: 'course1', type: 'course', message: 'New material available in Web Development', time: '2 days ago' }
+        ];
+        
+        setNotifications(allNotifications);
         
         setIsLoading(false);
       } catch (err) {
@@ -71,8 +93,29 @@ function StudentDashboard() {
       }
     };
 
+  // Fetch student data when component mounts
+  useEffect(() => {
     fetchStudentData();
-  }, []); // Empty dependency array means this runs once on component mount
+  }, []);
+
+  // Refresh data when window gains focus (user returns from another page)
+  useEffect(() => {
+    const handleFocus = () => {
+      fetchStudentData();
+    };
+    
+    window.addEventListener('focus', handleFocus);
+    return () => window.removeEventListener('focus', handleFocus);
+  }, []);
+
+  // Periodic refresh every 30 seconds for real-time updates
+  useEffect(() => {
+    const interval = setInterval(() => {
+      fetchStudentData();
+    }, 30000); // 30 seconds
+    
+    return () => clearInterval(interval);
+  }, []);
 
   // Show loading spinner while fetching data
   if (isLoading) {
@@ -106,7 +149,7 @@ function StudentDashboard() {
         <Row className="align-items-center">
           <Col>
             <h1 className="mb-0">Student Dashboard</h1>
-            <p className="text-muted mb-0">Welcome back, Student</p>
+            <p className="text-muted mb-0">Welcome back, {user?.name || 'Student'}</p>
           </Col>
           <Col xs="auto">
             <Dropdown align="end">
@@ -124,10 +167,12 @@ function StudentDashboard() {
                       <div className={`notification-icon ${
                         notification.type === 'assignment' ? 'bg-primary' : 
                         notification.type === 'grade' ? 'bg-success' : 
+                        notification.type === 'enrollment' ? 'bg-warning' :
                         'bg-info'
                       }`}>
                         {notification.type === 'assignment' ? <FaClipboardList /> : 
                          notification.type === 'grade' ? <FaTrophy /> : 
+                         notification.type === 'enrollment' ? <FaUserGraduate /> :
                          <FaBook />}
                       </div>
                       <div className="ms-3">

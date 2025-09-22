@@ -8,10 +8,14 @@ import {
   FaUsers, FaBook, FaChalkboardTeacher, FaUserGraduate, 
   FaBell
 } from 'react-icons/fa';
-import { adminService } from '../../services/api';
+import { commonService, adminService } from '../../services/api';
+import { adminService as adminServiceNew } from '../../services/adminService';
+import { useAuth } from '../../contexts/AuthContext';
 import './AdminDashboard.css'; // We'll create this file for custom styling
 
 function AdminDashboard() {
+  const { user } = useAuth();
+  
   // State to store dashboard statistics
   const [stats, setStats] = useState({
     totalUsers: 0,
@@ -27,24 +31,31 @@ function AdminDashboard() {
   const [error, setError] = useState(null);
   const [activeTab, setActiveTab] = useState('overview');
 
-  // Fetch dashboard statistics when component mounts
-  useEffect(() => {
-    const fetchDashboardStats = async () => {
+  // Function to fetch dashboard statistics
+  const fetchDashboardStats = async () => {
       try {
         // Use our API service
-        const data = await adminService.getDashboardStats();
+        const [data, pendingEnrollments] = await Promise.all([
+          adminService.getDashboardStats(),
+          adminServiceNew.getPendingEnrollments()
+        ]);
         
-        // Enhance with mock data for new UI elements
+        // Convert pending enrollments to notification format
+        const pendingRequests = pendingEnrollments.map(enrollment => ({
+          id: enrollment.enrollmentId,
+          type: 'enrollment',
+          student: enrollment.student.name,
+          course: enrollment.course.title,
+          requestedOn: new Date(enrollment.enrollmentDate).toLocaleDateString()
+        }));
+        
         const enhancedData = {
           ...data,
+          pendingRequests,
           recentActivity: [
             { id: 1, type: 'enrollment', user: 'John Doe', action: 'enrolled in', target: 'Introduction to Computer Science', time: '2 hours ago' },
             { id: 2, type: 'course', user: 'Jane Smith', action: 'created a new course', target: 'Advanced Mathematics', time: '1 day ago' },
             { id: 3, type: 'user', user: 'Admin', action: 'approved instructor account for', target: 'Dr. Robert Johnson', time: '2 days ago' }
-          ],
-          pendingRequests: [
-            { id: 1, type: 'enrollment', student: 'Michael Brown', course: 'Data Structures', requestedOn: '2023-04-10' },
-            { id: 2, type: 'instructor', name: 'Dr. Sarah Wilson', department: 'Computer Science', requestedOn: '2023-04-09' }
           ]
         };
         
@@ -57,7 +68,18 @@ function AdminDashboard() {
       }
     };
 
+  // Fetch dashboard statistics when component mounts
+  useEffect(() => {
     fetchDashboardStats();
+  }, []);
+
+  // Periodic refresh every 30 seconds for real-time updates
+  useEffect(() => {
+    const interval = setInterval(() => {
+      fetchDashboardStats();
+    }, 30000); // 30 seconds
+    
+    return () => clearInterval(interval);
   }, []);
 
   // Show loading spinner while fetching data
@@ -92,7 +114,7 @@ function AdminDashboard() {
         <Row className="align-items-center">
           <Col>
             <h1 className="mb-0">Admin Dashboard</h1>
-            <p className="text-muted mb-0">Welcome back, Admin</p>
+            <p className="text-muted mb-0">Welcome back, {user?.name || 'Admin'}</p>
           </Col>
           <Col xs="auto">
             <Dropdown align="end">

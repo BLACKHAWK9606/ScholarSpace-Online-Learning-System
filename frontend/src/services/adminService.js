@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:9090/api';
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8080/api';
 
 // Helper function to get auth header
 const authHeader = () => {
@@ -127,7 +127,7 @@ const removeInstructorFromCourse = async (courseId, instructorId) => {
 // Enrollment Management
 const getPendingEnrollments = async () => {
   const response = await axios.get(
-    `${API_URL}/admin/enrollments/pending`, 
+    `${API_URL}/enrollments/pending`, 
     { headers: authHeader() }
   );
   return response.data;
@@ -135,7 +135,7 @@ const getPendingEnrollments = async () => {
 
 const approveEnrollment = async (enrollmentId) => {
   const response = await axios.put(
-    `${API_URL}/admin/enrollments/${enrollmentId}/approve`, 
+    `${API_URL}/enrollments/${enrollmentId}/approve`, 
     {}, 
     { headers: authHeader() }
   );
@@ -144,7 +144,7 @@ const approveEnrollment = async (enrollmentId) => {
 
 const rejectEnrollment = async (enrollmentId) => {
   const response = await axios.put(
-    `${API_URL}/admin/enrollments/${enrollmentId}/reject`, 
+    `${API_URL}/enrollments/${enrollmentId}/reject`, 
     {}, 
     { headers: authHeader() }
   );
@@ -153,7 +153,7 @@ const rejectEnrollment = async (enrollmentId) => {
 
 const getEnrollmentsByCourse = async (courseId) => {
   const response = await axios.get(
-    `${API_URL}/admin/courses/${courseId}/enrollments`, 
+    `${API_URL}/enrollments/course/${courseId}`, 
     { headers: authHeader() }
   );
   return response.data;
@@ -161,7 +161,7 @@ const getEnrollmentsByCourse = async (courseId) => {
 
 const getEnrollmentsByStudent = async (studentId) => {
   const response = await axios.get(
-    `${API_URL}/admin/students/${studentId}/enrollments`, 
+    `${API_URL}/enrollments/student/${studentId}`, 
     { headers: authHeader() }
   );
   return response.data;
