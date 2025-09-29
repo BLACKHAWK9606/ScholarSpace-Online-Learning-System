@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_URL = 'http://localhost:9090/auth/';
+const API_URL = 'http://localhost:8080/api/auth/';
 
 const instance = axios.create({
   baseURL: API_URL,
@@ -30,8 +30,13 @@ class AuthService {
       const response = await instance.post('login', { email, password });
       
       if (response.data.token) {
-        localStorage.setItem('user', JSON.stringify(response.data));
+        const loginData = {
+          ...response.data,
+          loginTime: Date.now()
+        };
+        localStorage.setItem('user', JSON.stringify(loginData));
         localStorage.setItem('token', response.data.token);
+        sessionStorage.setItem('sessionActive', 'true');
       }
       return response.data;
     } catch (error) {
@@ -40,13 +45,17 @@ class AuthService {
     }
   }
 
-  async register(name, email, password, role = 'STUDENT') {
+  async register(name, email, password, role = 'STUDENT', phone = '', dateOfBirth = '', address = '', emergencyContact = '') {
     try {
       const response = await instance.post('register', {
         name,
         email,
         password,
-        role
+        role,
+        phone,
+        dateOfBirth,
+        address,
+        emergencyContact
       });
       return response.data;
     } catch (error) {
@@ -58,6 +67,7 @@ class AuthService {
   logout() {
     localStorage.removeItem('user');
     localStorage.removeItem('token');
+    sessionStorage.removeItem('sessionActive');
   }
 
   getCurrentUser() {
@@ -69,7 +79,9 @@ class AuthService {
   }
 
   isAuthenticated() {
-    return !!this.getToken();
+    const hasToken = !!this.getToken();
+    const hasSession = !!sessionStorage.getItem('sessionActive');
+    return hasToken && hasSession;
   }
 
   async sendPasswordResetEmail(email) {

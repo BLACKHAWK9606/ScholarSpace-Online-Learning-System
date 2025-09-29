@@ -30,6 +30,9 @@ import { AuthProvider } from './contexts/AuthContext';
 // Import common components
 import Navbar from './components/common/Navbar';
 import CourseDetails from './components/common/CourseDetails';
+import Profile from './components/common/Profile';
+import ChangePassword from './components/Auth/ChangePassword';
+import FirstTimeLoginCheck from './components/Auth/FirstTimeLoginCheck';
 
 function App() {
   return (
@@ -44,13 +47,23 @@ function App() {
               <Route path="/register" element={<Register />} />
               <Route path="/forgot-password" element={<ForgotPassword />} />
               <Route path="/reset-password" element={<ResetPassword />} />
+              <Route 
+                path="/change-password" 
+                element={
+                  <PrivateRoute allowedRoles={['admin', 'instructor', 'student']}>
+                    <ChangePassword />
+                  </PrivateRoute>
+                } 
+              />
 
               {/* Protected Routes */}
               <Route 
                 path="/admin/dashboard" 
                 element={
                   <PrivateRoute allowedRoles={['admin']}>
-                    <AdminDashboard />
+                    <FirstTimeLoginCheck>
+                      <AdminDashboard />
+                    </FirstTimeLoginCheck>
                   </PrivateRoute>
                 } 
               />
@@ -109,7 +122,9 @@ function App() {
                 path="/instructor/dashboard" 
                 element={
                   <PrivateRoute allowedRoles={['instructor']}>
-                    <InstructorDashboard />
+                    <FirstTimeLoginCheck>
+                      <InstructorDashboard />
+                    </FirstTimeLoginCheck>
                   </PrivateRoute>
                 } 
               />
@@ -134,6 +149,16 @@ function App() {
               />
 
               {/* Default Route - Redirect to login */}
+              {/* Profile Route */}
+              <Route 
+                path="/profile" 
+                element={
+                  <PrivateRoute allowedRoles={['admin', 'instructor', 'student']}>
+                    <Profile />
+                  </PrivateRoute>
+                } 
+              />
+
               {/* Course Routes */}
               <Route 
                 path="/courses/:courseId" 

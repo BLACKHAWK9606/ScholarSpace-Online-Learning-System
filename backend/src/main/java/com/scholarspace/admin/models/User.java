@@ -1,5 +1,6 @@
 package com.scholarspace.admin.models;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
 
@@ -21,6 +22,8 @@ public class User {
     @Enumerated(EnumType.STRING)
     private Role role;
     
+    @Column(name = "is_active")
+    @JsonProperty("isActive")
     private boolean isActive = true;
     
     private LocalDateTime createdAt;
@@ -82,12 +85,23 @@ public class User {
         this.role = role;
     }
     
+    @JsonProperty("isActive")
     public boolean isActive() {
         return isActive;
     }
     
     public void setActive(boolean active) {
         isActive = active;
+    }
+    
+    // Additional getter for Jackson compatibility
+    public boolean getIsActive() {
+        return isActive;
+    }
+    
+    // Additional setter for Jackson compatibility
+    public void setIsActive(boolean isActive) {
+        this.isActive = isActive;
     }
     
     public LocalDateTime getCreatedAt() {
@@ -104,5 +118,26 @@ public class User {
     
     public void setLastLogin(LocalDateTime lastLogin) {
         this.lastLogin = lastLogin;
+    }
+    
+    // Helper methods for frontend compatibility
+    @JsonProperty("firstName")
+    public String getFirstName() {
+        if (name != null && !name.trim().isEmpty()) {
+            String[] parts = name.trim().split("\\s+");
+            return parts[0];
+        }
+        return "";
+    }
+    
+    @JsonProperty("lastName")
+    public String getLastName() {
+        if (name != null && !name.trim().isEmpty()) {
+            String[] parts = name.trim().split("\\s+");
+            if (parts.length > 1) {
+                return String.join(" ", java.util.Arrays.copyOfRange(parts, 1, parts.length));
+            }
+        }
+        return "";
     }
 }

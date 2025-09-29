@@ -11,10 +11,12 @@ import {
 import { commonService, studentService } from '../../services/api';
 import { studentService as studentServiceNew } from '../../services/studentService';
 import { useAuth } from '../../contexts/AuthContext';
+import { useNavigate } from 'react-router-dom';
 import './StudentDashboard.css'; // We'll create this file for custom styling
 
 function StudentDashboard() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   
   // State to store student's registered and available courses
   const [registeredCourses, setRegisteredCourses] = useState([]);
@@ -334,12 +336,13 @@ function StudentDashboard() {
                               {course.schedule || 'Mon/Wed'}
                             </Badge>
                           </div>
-                          <Link 
-                            to={`/student/course/${course.courseId}`} 
-                            className="btn btn-primary w-100"
+                          <Button 
+                            variant="primary"
+                            className="w-100"
+                            onClick={() => navigate(`/courses/${course.courseId || course.id}`)}
                           >
                             Go to Course
-                          </Link>
+                          </Button>
                         </Card.Body>
                       </Card>
                     ))}

@@ -56,6 +56,11 @@ public class InstructorController {
     public ResponseEntity<List<Instructor>> getAllInstructors() {
         return ResponseEntity.ok(instructorService.getAllInstructors());
     }
+    
+    @GetMapping("/active")
+    public ResponseEntity<List<Instructor>> getActiveInstructors() {
+        return ResponseEntity.ok(instructorService.getActiveInstructors());
+    }
 
     @GetMapping("/{id}")
     public ResponseEntity<?> getInstructorById(@PathVariable Long id) {
@@ -71,6 +76,36 @@ public class InstructorController {
                 .orElse(ResponseEntity.notFound().build());
     }
 
+    @GetMapping("/{instructorId}/courses/{courseId}/validate")
+    public ResponseEntity<?> validateInstructorCourseAssignment(
+            @PathVariable Long instructorId, 
+            @PathVariable Long courseId) {
+        try {
+            InstructorService.ValidationResult validation = instructorService.validateInstructorCourseAssignment(instructorId, courseId);
+            
+            if (validation.isValid()) {
+                return ResponseEntity.ok(Map.of(
+                    "valid", true,
+                    "message", validation.getMessage(),
+                    "instructorId", instructorId,
+                    "courseId", courseId
+                ));
+            } else {
+                return ResponseEntity.badRequest().body(Map.of(
+                    "valid", false,
+                    "error", validation.getMessage(),
+                    "instructorId", instructorId,
+                    "courseId", courseId
+                ));
+            }
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body(Map.of(
+                "valid", false,
+                "error", "Server error during validation: " + e.getMessage()
+            ));
+        }
+    }
+    
     @PostMapping("/{instructorId}/courses/{courseId}")
     public ResponseEntity<?> assignInstructorToCourse(
             @PathVariable Long instructorId, 
@@ -95,11 +130,11 @@ public class InstructorController {
                 System.out.println("Using default role: PRIMARY");
             }
             
-            // Check if instructor exists before assignment
-            Optional<Instructor> instructorOpt = instructorService.getInstructorById(instructorId);
-            if (instructorOpt.isEmpty()) {
-                System.out.println("Instructor not found with ID: " + instructorId);
-                return ResponseEntity.badRequest().body(Map.of("error", "Instructor not found with ID: " + instructorId));
+            // Validate assignment before attempting
+            InstructorService.ValidationResult validation = instructorService.validateInstructorCourseAssignment(instructorId, courseId);
+            if (!validation.isValid()) {
+                System.out.println("Assignment validation failed: " + validation.getMessage());
+                return ResponseEntity.badRequest().body(Map.of("error", validation.getMessage()));
             }
             
             // Assign the instructor to the course
@@ -127,14 +162,31 @@ public class InstructorController {
     public ResponseEntity<?> removeInstructorFromCourse(
             @PathVariable Long instructorId, 
             @PathVariable Long courseId) {
-        
-        instructorService.removeInstructorFromCourse(instructorId, courseId);
-        return ResponseEntity.ok(Map.of("message", "Instructor removed from course successfully"));
+        try {
+            instructorService.removeInstructorFromCourse(instructorId, courseId);
+            return ResponseEntity.ok(Map.of("message", "Instructor removed from course successfully"));
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body(Map.of("error", "Server error: " + e.getMessage()));
+        }
     }
 
     @GetMapping("/{instructorId}/courses")
     public ResponseEntity<List<CourseInstructor>> getCoursesByInstructor(@PathVariable Long instructorId) {
         return ResponseEntity.ok(instructorService.getCoursesByInstructor(instructorId));
+    }
+    
+    @GetMapping("/{instructorId}/courses/detailed")
+    public ResponseEntity<?> getDetailedCoursesByInstructor(@PathVariable Long instructorId) {
+        try {
+            List<Map<String, Object>> detailedCourses = instructorService.getDetailedCoursesByInstructor(instructorId);
+            return ResponseEntity.ok(detailedCourses);
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body(Map.of("error", "Server error: " + e.getMessage()));
+        }
     }
 
     @GetMapping("/courses/{courseId}")
@@ -154,6 +206,31 @@ public class InstructorController {
             }
             
             Instructor instructor = existingInstructor.get();
+            
+            // Update user information if provided
+            User user = instructor.getUser();
+            if (user != null) {
+                if (instructorRequest.containsKey("name")) {
+                    user.setName((String) instructorRequest.get("name"));
+                }
+                if (instructorRequest.containsKey("email")) {
+                    user.setEmail((String) instructorRequest.get("email"));
+                }
+                if (instructorRequest.containsKey("isActive")) {
+                    Object activeValue = instructorRequest.get("isActive");
+                    if (activeValue != null) {
+                        boolean isActive = activeValue instanceof Boolean ? (Boolean) activeValue : Boolean.parseBoolean(activeValue.toString());
+                        
+                        if (isActive) {
+                            instructorService.activateInstructor(id);
+                        } else {
+                            instructorService.deactivateInstructor(id);
+                        }
+                        
+                        instructor = instructorService.getInstructorById(id).orElse(instructor);
+                    }
+                }
+            }
             
             // Update department if provided
             if (instructorRequest.containsKey("departmentId")) {
@@ -179,7 +256,10 @@ public class InstructorController {
                 instructor.setOfficeHours(officeHours);
             }
             
-            instructor = instructorService.updateInstructor(instructor);
+            // Only update if we haven't already updated via activate/deactivate
+            if (!instructorRequest.containsKey("isActive")) {
+                instructor = instructorService.updateInstructor(instructor);
+            }
             return ResponseEntity.ok(instructor);
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(Map.of("error", "Invalid input: " + e.getMessage()));
@@ -193,19 +273,8 @@ public class InstructorController {
     @PutMapping("/{id}/activate")
     public ResponseEntity<?> activateInstructor(@PathVariable Long id) {
         try {
-            Optional<Instructor> existingInstructor = instructorService.getInstructorById(id);
-            if (existingInstructor.isEmpty()) {
-                return ResponseEntity.notFound().build();
-            }
-            
-            Instructor instructor = existingInstructor.get();
-            User user = instructor.getUser();
-            user.setActive(true);
-            
-            instructorService.updateInstructor(instructor);
+            instructorService.activateInstructor(id);
             return ResponseEntity.ok(Map.of("message", "Instructor activated successfully"));
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body(Map.of("error", "Invalid input: " + e.getMessage()));
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         } catch (Exception e) {
@@ -216,19 +285,8 @@ public class InstructorController {
     @PutMapping("/{id}/deactivate")
     public ResponseEntity<?> deactivateInstructor(@PathVariable Long id) {
         try {
-            Optional<Instructor> existingInstructor = instructorService.getInstructorById(id);
-            if (existingInstructor.isEmpty()) {
-                return ResponseEntity.notFound().build();
-            }
-            
-            Instructor instructor = existingInstructor.get();
-            User user = instructor.getUser();
-            user.setActive(false);
-            
-            instructorService.updateInstructor(instructor);
+            instructorService.deactivateInstructor(id);
             return ResponseEntity.ok(Map.of("message", "Instructor deactivated successfully"));
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body(Map.of("error", "Invalid input: " + e.getMessage()));
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         } catch (Exception e) {

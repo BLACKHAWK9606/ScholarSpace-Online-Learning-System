@@ -32,25 +32,37 @@ public class CourseController {
             String code = (String) courseData.get("code");
             String title = (String) courseData.get("title");
             String description = (String) courseData.get("description");
-            Integer creditHours = Integer.parseInt(courseData.get("creditHours").toString());
+            Object creditHoursObj = courseData.get("creditHours");
+            Integer creditHours = creditHoursObj instanceof Integer ? (Integer) creditHoursObj : 
+                                 creditHoursObj != null ? Integer.parseInt(creditHoursObj.toString()) : null;
             // Default to empty string for optional fields
             String semester = "";  // Default value
             if (courseData.containsKey("semester") && courseData.get("semester") != null) {
-                Object semVal = courseData.get("semester");
-                semester = semVal instanceof String ? (String)semVal : semVal.toString();
+                semester = courseData.get("semester").toString();
             }
             // Default to empty string for optional fields
             String academicYear = "";  // Default value
             if (courseData.containsKey("academicYear") && courseData.get("academicYear") != null) {
-                Object yearVal = courseData.get("academicYear");
-                academicYear = yearVal instanceof String ? (String)yearVal : yearVal.toString();
+                academicYear = courseData.get("academicYear").toString();
             }
-            Long departmentId = Long.parseLong(courseData.get("departmentId").toString());
+            Long departmentId = ((Number) courseData.get("departmentId")).longValue();
+            
+            // Handle isActive field
+            boolean isActive = true; // Default to active
+            if (courseData.containsKey("isActive") && courseData.get("isActive") != null) {
+                Object activeObj = courseData.get("isActive");
+                isActive = activeObj instanceof Boolean ? (Boolean) activeObj : 
+                          Boolean.parseBoolean(activeObj.toString());
+            }
             
             Course course = courseService.createCourse(
                 code, title, description, creditHours, 
                 semester, academicYear, departmentId
             );
+            
+            // Set the active status
+            course.setActive(isActive);
+            courseRepo.save(course);
             
             return ResponseEntity.ok(course);
         } catch (NumberFormatException e) {
@@ -100,6 +112,14 @@ public class CourseController {
 
         Course course = existingCourse.get();
 
+        if (courseDetails.getCode() != null && !courseDetails.getCode().equals(course.getCode())) {
+            // Check if new course code already exists
+            Optional<Course> existingByCode = courseRepo.findByCode(courseDetails.getCode());
+            if (existingByCode.isPresent() && !existingByCode.get().getId().equals(id)) {
+                return ResponseEntity.badRequest().body(Map.of("error", "Course code already exists"));
+            }
+            course.setCode(courseDetails.getCode());
+        }
         if (courseDetails.getTitle() != null) {
             course.setTitle(courseDetails.getTitle());
         }
@@ -114,6 +134,10 @@ public class CourseController {
         }
         if (courseDetails.getAcademicYear() != null) {
             course.setAcademicYear(courseDetails.getAcademicYear());
+        }
+        // Update the active status - handle both boolean and null cases
+        if (courseDetails.isActive() != course.isActive()) {
+            course.setActive(courseDetails.isActive());
         }
 
         Course updatedCourse = courseRepo.save(course);
@@ -146,5 +170,18 @@ public class CourseController {
         courseRepo.save(course);
         
         return ResponseEntity.ok(Map.of("message", "Course deactivated successfully"));
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<?> deleteCourse(@PathVariable Long id) {
+        try {
+            if (!courseRepo.existsById(id)) {
+                return ResponseEntity.notFound().build();
+            }
+            courseService.deleteCourse(id);
+            return ResponseEntity.ok(Map.of("message", "Course deleted successfully"));
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
     }
 }

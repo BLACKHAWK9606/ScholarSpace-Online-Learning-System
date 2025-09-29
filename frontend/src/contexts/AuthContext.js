@@ -11,20 +11,47 @@ export function AuthProvider({ children }) {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Check if token exists and set initial auth state
+  // Check if token exists and validate it
   useEffect(() => {
     const initializeAuth = async () => {
       try {
         const storedUser = AuthService.getCurrentUser();
         
         if (storedUser && storedUser.token) {
-          // User exists in localStorage, set the auth state
-          setUser(storedUser);
-          setIsAuthenticated(true);
+          // Check if session is active (survives page refresh but not browser restart)
+          const sessionActive = sessionStorage.getItem('sessionActive');
+          
+          if (sessionActive) {
+            // Session is active, validate token
+            try {
+              const response = await fetch('http://localhost:8080/api/users/profile', {
+                headers: {
+                  'Authorization': `Bearer ${storedUser.token}`,
+                  'Content-Type': 'application/json'
+                }
+              });
+              
+              if (response.ok) {
+                const userData = await response.json();
+                // Update stored user with latest data including isFirstLogin
+                const updatedUser = { ...storedUser, ...userData };
+                localStorage.setItem('user', JSON.stringify(updatedUser));
+                setUser(updatedUser);
+                setIsAuthenticated(true);
+              } else {
+                AuthService.logout();
+              }
+            } catch (apiError) {
+              console.error('Token validation failed:', apiError);
+              AuthService.logout();
+            }
+          } else {
+            // No active session, clear auth data
+            AuthService.logout();
+          }
         }
       } catch (error) {
         console.error('Authentication initialization error:', error);
-        // Clear invalid auth data
         AuthService.logout();
       } finally {
         setIsLoading(false);
@@ -90,6 +117,13 @@ export function AuthProvider({ children }) {
     }
   };
 
+  // Update user function
+  const updateUser = (updatedUser) => {
+    const newUserData = { ...user, ...updatedUser };
+    localStorage.setItem('user', JSON.stringify(newUserData));
+    setUser(newUserData);
+  };
+
   // Context value
   const contextValue = {
     user,
@@ -98,6 +132,7 @@ export function AuthProvider({ children }) {
     login,
     logout,
     register,
+    updateUser,
     updateUserProfile,
     sendPasswordResetEmail,
     resetPassword

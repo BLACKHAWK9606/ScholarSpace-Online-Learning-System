@@ -58,7 +58,7 @@ public ResponseEntity<?> submitAssignment(
             assignmentId, studentId, filePath.toString());
         
         return ResponseEntity.ok(submission);
-    } catch (Exception e) {
+    } catch (RuntimeException | java.io.IOException e) {
         return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
     }
 }
@@ -75,7 +75,9 @@ public ResponseEntity<?> submitAssignment(
             
             Submission submission = submissionService.gradeSubmission(id, grade, feedback, gradedById);
             return ResponseEntity.ok(submission);
-        } catch (Exception e) {
+        } catch (NumberFormatException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Invalid number format: " + e.getMessage()));
+        } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
     }

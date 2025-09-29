@@ -40,18 +40,18 @@ const updateUserStatus = async (userId, active) => {
 
 // Course Management
 const getAllCourses = async () => {
-  const response = await axios.get(`${API_URL}/admin/courses`, { headers: authHeader() });
+  const response = await axios.get(`${API_URL}/courses`, { headers: authHeader() });
   return response.data;
 };
 
 const getCourseById = async (courseId) => {
-  const response = await axios.get(`${API_URL}/admin/courses/${courseId}`, { headers: authHeader() });
+  const response = await axios.get(`${API_URL}/courses/${courseId}`, { headers: authHeader() });
   return response.data;
 };
 
 const createCourse = async (courseData) => {
   const response = await axios.post(
-    `${API_URL}/admin/courses`, 
+    `${API_URL}/courses`, 
     courseData, 
     { headers: authHeader() }
   );
@@ -60,7 +60,7 @@ const createCourse = async (courseData) => {
 
 const updateCourse = async (courseId, courseData) => {
   const response = await axios.put(
-    `${API_URL}/admin/courses/${courseId}`, 
+    `${API_URL}/courses/${courseId}`, 
     courseData, 
     { headers: authHeader() }
   );
@@ -69,7 +69,7 @@ const updateCourse = async (courseId, courseData) => {
 
 const deleteCourse = async (courseId) => {
   const response = await axios.delete(
-    `${API_URL}/admin/courses/${courseId}`, 
+    `${API_URL}/courses/${courseId}`, 
     { headers: authHeader() }
   );
   return response.data;
@@ -77,7 +77,7 @@ const deleteCourse = async (courseId) => {
 
 const activateCourse = async (courseId) => {
   const response = await axios.put(
-    `${API_URL}/admin/courses/${courseId}/activate`, 
+    `${API_URL}/courses/${courseId}/activate`, 
     {}, 
     { headers: authHeader() }
   );
@@ -86,7 +86,7 @@ const activateCourse = async (courseId) => {
 
 const deactivateCourse = async (courseId) => {
   const response = await axios.put(
-    `${API_URL}/admin/courses/${courseId}/deactivate`, 
+    `${API_URL}/courses/${courseId}/deactivate`, 
     {}, 
     { headers: authHeader() }
   );
@@ -95,13 +95,51 @@ const deactivateCourse = async (courseId) => {
 
 // Instructor Management
 const getAllInstructors = async () => {
-  const response = await axios.get(`${API_URL}/admin/instructors`, { headers: authHeader() });
+  const response = await axios.get(`${API_URL}/instructors`, { headers: authHeader() });
+  return response.data;
+};
+
+const createInstructor = async (instructorData) => {
+  // First create user with INSTRUCTOR role
+  const userResponse = await axios.post(
+    `${API_URL}/users`,
+    {
+      name: `${instructorData.firstName} ${instructorData.lastName}`,
+      email: instructorData.email,
+      password: instructorData.password,
+      role: 'INSTRUCTOR',
+      isActive: instructorData.isActive
+    },
+    { headers: authHeader() }
+  );
+  
+  // Then create instructor record
+  const response = await axios.post(
+    `${API_URL}/instructors`,
+    {
+      userId: userResponse.data.userId,
+      departmentId: instructorData.departmentId,
+      specialization: instructorData.specialization || '',
+      officeLocation: instructorData.officeLocation || '',
+      officeHours: instructorData.officeHours || ''
+    },
+    { headers: authHeader() }
+  );
+  return response.data;
+};
+
+const updateInstructor = async (instructorId, instructorData) => {
+  const response = await axios.put(
+    `${API_URL}/instructors/${instructorId}`, 
+    instructorData, 
+    { headers: authHeader() }
+  );
   return response.data;
 };
 
 const getCourseInstructors = async (courseId) => {
   const response = await axios.get(
-    `${API_URL}/admin/courses/${courseId}/instructors`, 
+    `${API_URL}/instructors/courses/${courseId}`, 
     { headers: authHeader() }
   );
   return response.data;
@@ -109,8 +147,8 @@ const getCourseInstructors = async (courseId) => {
 
 const assignInstructorToCourse = async (courseId, instructorId) => {
   const response = await axios.post(
-    `${API_URL}/admin/courses/${courseId}/instructors`, 
-    { instructorId }, 
+    `${API_URL}/instructors/${instructorId}/courses/${courseId}`, 
+    { role: 'PRIMARY' }, 
     { headers: authHeader() }
   );
   return response.data;
@@ -118,7 +156,25 @@ const assignInstructorToCourse = async (courseId, instructorId) => {
 
 const removeInstructorFromCourse = async (courseId, instructorId) => {
   const response = await axios.delete(
-    `${API_URL}/admin/courses/${courseId}/instructors/${instructorId}`, 
+    `${API_URL}/instructors/${instructorId}/courses/${courseId}`, 
+    { headers: authHeader() }
+  );
+  return response.data;
+};
+
+const activateInstructor = async (instructorId) => {
+  const response = await axios.put(
+    `${API_URL}/instructors/${instructorId}/activate`, 
+    {}, 
+    { headers: authHeader() }
+  );
+  return response.data;
+};
+
+const deactivateInstructor = async (instructorId) => {
+  const response = await axios.put(
+    `${API_URL}/instructors/${instructorId}/deactivate`, 
+    {}, 
     { headers: authHeader() }
   );
   return response.data;
@@ -187,9 +243,13 @@ export const adminService = {
   
   // Instructor Management
   getAllInstructors,
+  createInstructor,
+  updateInstructor,
   getCourseInstructors,
   assignInstructorToCourse,
   removeInstructorFromCourse,
+  activateInstructor,
+  deactivateInstructor,
   
   // Enrollment Management
   getPendingEnrollments,

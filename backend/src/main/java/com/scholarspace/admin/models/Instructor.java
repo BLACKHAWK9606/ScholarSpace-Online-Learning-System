@@ -1,5 +1,6 @@
 package com.scholarspace.admin.models;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
 
@@ -27,6 +28,8 @@ public class Instructor {
     @Column(name = "office_hours")
     private String officeHours;
     
+
+    
     @Column(name = "created_at")
     private LocalDateTime createdAt;
     
@@ -43,6 +46,7 @@ public class Instructor {
         this.specialization = specialization;
         this.officeLocation = officeLocation;
         this.officeHours = officeHours;
+
         this.createdAt = LocalDateTime.now();
     }
     
@@ -101,5 +105,15 @@ public class Instructor {
 
     public void setCreatedAt(LocalDateTime createdAt) {
         this.createdAt = createdAt;
+    }
+    
+    @JsonProperty("isActive")
+    public boolean isActive() {
+        return user != null ? user.isActive() : true;
+    }
+    
+    // Additional getter for Jackson compatibility
+    public boolean getIsActive() {
+        return user != null ? user.isActive() : true;
     }
 }

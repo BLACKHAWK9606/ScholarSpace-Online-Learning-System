@@ -4,10 +4,12 @@ import {
   Spinner, Alert, Badge, Modal 
 } from 'react-bootstrap';
 import { FaPlus, FaEye, FaCheck, FaClock, FaTimes } from 'react-icons/fa';
+import { useNavigate } from 'react-router-dom';
 import { studentService } from '../../services/studentService';
 import NotificationToast from '../common/NotificationToast';
 
 function CourseRegistration() {
+  const navigate = useNavigate();
   const [availableCourses, setAvailableCourses] = useState([]);
   const [myEnrollments, setMyEnrollments] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -129,7 +131,21 @@ function CourseRegistration() {
                     <td>{enrollment.course.title}</td>
                     <td>{enrollment.course.department?.name || 'N/A'}</td>
                     <td>{getStatusBadge(enrollment.status)}</td>
-                    <td>{new Date(enrollment.enrollmentDate).toLocaleDateString()}</td>
+                    <td>
+                      <div>
+                        {new Date(enrollment.enrollmentDate).toLocaleDateString()}
+                        <div>
+                          <Button 
+                            variant="link" 
+                            size="sm" 
+                            className="p-0 text-decoration-none"
+                            onClick={() => navigate(`/courses/${enrollment.course.id}`)}
+                          >
+                            View Details
+                          </Button>
+                        </div>
+                      </div>
+                    </td>
                   </tr>
                 ))}
               </tbody>

@@ -4,7 +4,14 @@ import com.scholarspace.admin.models.Course;
 import com.scholarspace.admin.models.Department;
 import com.scholarspace.admin.repositories.CourseRepository;
 import com.scholarspace.admin.repositories.DepartmentRepository;
+import com.scholarspace.admin.repositories.EnrollmentRepository;
+import com.scholarspace.admin.repositories.CourseInstructorRepository;
+import com.scholarspace.admin.repositories.CourseContentRepository;
+import com.scholarspace.admin.repositories.SubmissionRepository;
+import com.scholarspace.admin.repositories.FileStorageRepository;
+import com.scholarspace.admin.repositories.AttendanceRecordRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -15,10 +22,25 @@ public class CourseService {
 
     private final CourseRepository courseRepository;
     private final DepartmentRepository departmentRepository;
+    private final EnrollmentRepository enrollmentRepository;
+    private final CourseInstructorRepository courseInstructorRepository;
+    private final CourseContentRepository courseContentRepository;
+    private final SubmissionRepository submissionRepository;
+    private final FileStorageRepository fileStorageRepository;
+    private final AttendanceRecordRepository attendanceRecordRepository;
 
-    public CourseService(CourseRepository courseRepository, DepartmentRepository departmentRepository) {
+    public CourseService(CourseRepository courseRepository, DepartmentRepository departmentRepository,
+                        EnrollmentRepository enrollmentRepository, CourseInstructorRepository courseInstructorRepository,
+                        CourseContentRepository courseContentRepository, SubmissionRepository submissionRepository,
+                        FileStorageRepository fileStorageRepository, AttendanceRecordRepository attendanceRecordRepository) {
         this.courseRepository = courseRepository;
         this.departmentRepository = departmentRepository;
+        this.enrollmentRepository = enrollmentRepository;
+        this.courseInstructorRepository = courseInstructorRepository;
+        this.courseContentRepository = courseContentRepository;
+        this.submissionRepository = submissionRepository;
+        this.fileStorageRepository = fileStorageRepository;
+        this.attendanceRecordRepository = attendanceRecordRepository;
     }
 
     /**
@@ -90,5 +112,40 @@ public class CourseService {
             course.setActive(true);
             courseRepository.save(course);
         });
+    }
+
+    @Transactional
+    public void deleteCourse(Long courseId) {
+        if (!courseRepository.existsById(courseId)) {
+            throw new RuntimeException("Course not found");
+        }
+        
+        Course course = courseRepository.findById(courseId).get();
+        
+        // Delete submissions for course contents first
+        courseContentRepository.findByCourse_Id(courseId).forEach(content -> {
+            submissionRepository.deleteAll(submissionRepository.findByAssignment_ContentId(content.getContentId()));
+        });
+        
+        // Delete all course contents for this course
+        courseContentRepository.deleteAll(courseContentRepository.findByCourse_Id(courseId));
+        
+        // Delete all file storage entries for this course
+        fileStorageRepository.deleteAll(fileStorageRepository.findByCourse(course));
+        
+        // Delete all attendance records for this course
+        attendanceRecordRepository.deleteAll(attendanceRecordRepository.findByCourse_Id(courseId));
+        
+        // Delete all enrollments for this course
+        enrollmentRepository.deleteAll(enrollmentRepository.findByCourse_Id(courseId));
+        
+        // Delete all instructor assignments for this course
+        courseInstructorRepository.deleteAll(courseInstructorRepository.findByCourse_Id(courseId));
+        
+        // Remove this course as a prerequisite from other courses using efficient query
+        courseRepository.removeAsPrerequisite(courseId);
+        
+        // Finally delete the course
+        courseRepository.deleteById(courseId);
     }
 }

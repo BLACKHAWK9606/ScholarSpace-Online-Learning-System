@@ -231,7 +231,7 @@ function CourseAssignment() {
                         <div className="fw-bold">{course.courseName || course.title}</div>
                         <small className="text-muted">{course.courseCode || course.code}</small>
                       </div>
-                      {course.active || course.isActive ? (
+                      {course.isActive ? (
                         <Badge bg="success" pill>Active</Badge>
                       ) : (
                         <Badge bg="secondary" pill>Inactive</Badge>

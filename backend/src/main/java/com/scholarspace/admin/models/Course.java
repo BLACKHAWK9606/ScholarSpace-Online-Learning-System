@@ -1,6 +1,9 @@
 package com.scholarspace.admin.models;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.*;
+import org.hibernate.annotations.BatchSize;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -20,12 +23,14 @@ public class Course {
     // This field is used to map between frontend and backend naming conventions
 
     
-    @ManyToMany
+    @ManyToMany(fetch = FetchType.LAZY)
     @JoinTable(
         name = "course_prerequisites",
         joinColumns = @JoinColumn(name = "course_id"),
         inverseJoinColumns = @JoinColumn(name = "prerequisite_id")
     )
+    @JsonIgnore
+    @BatchSize(size = 10)
     private List<Course> prerequisites;
     
     private String description;
@@ -43,6 +48,7 @@ public class Course {
     private Department department;
     
     @Column(name = "is_active")
+    @JsonProperty("isActive")
     private boolean isActive = true;
     
     @Column(name = "created_at")
@@ -161,12 +167,21 @@ public class Course {
         this.department = department;
     }
 
+    @JsonProperty("isActive")
     public boolean isActive() {
         return isActive;
     }
 
     public void setActive(boolean active) {
         isActive = active;
+    }
+    
+    public boolean getIsActive() {
+        return isActive;
+    }
+    
+    public void setIsActive(boolean isActive) {
+        this.isActive = isActive;
     }
 
     public LocalDateTime getCreatedAt() {

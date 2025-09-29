@@ -4,10 +4,13 @@ import {
   Spinner, Alert, Dropdown
 } from 'react-bootstrap';
 import { FaCheck, FaTimes, FaEllipsisV, FaEye } from 'react-icons/fa';
+import { useNavigate } from 'react-router-dom';
 import { adminService } from '../../services/adminService';
 import NotificationToast from '../common/NotificationToast';
 
 function EnrollmentApproval() {
+  const navigate = useNavigate();
+  
   // State for enrollments and UI
   const [pendingEnrollments, setPendingEnrollments] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -97,14 +100,12 @@ function EnrollmentApproval() {
 
   // View student details
   const handleViewStudent = (studentId) => {
-    // This would navigate to student details or open a modal
-    alert(`View student details for ID: ${studentId}`);
+    navigate(`/admin/students/${studentId}`);
   };
 
   // View course details
   const handleViewCourse = (courseId) => {
-    // This would navigate to course details or open a modal
-    alert(`View course details for ID: ${courseId}`);
+    navigate(`/courses/${courseId}`);
   };
 
   // Format date for display

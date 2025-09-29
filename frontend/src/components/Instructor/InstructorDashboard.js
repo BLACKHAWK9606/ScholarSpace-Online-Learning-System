@@ -8,10 +8,14 @@ import {
   FaBook, FaClipboardList, FaFileUpload, FaUser,
   FaGraduationCap, FaCalendarAlt, FaBell, FaEllipsisV
 } from 'react-icons/fa';
-import { commonService, instructorService } from '../../services/api';
+import { commonService } from '../../services/api';
+import { instructorService as instructorServiceNew } from '../../services/instructorService';
+import { useNavigate } from 'react-router-dom';
 import './InstructorDashboard.css'; // We'll create this file for custom styling
 
 function InstructorDashboard() {
+  const navigate = useNavigate();
+  
   // State to store instructor's courses and assignments
   const [courses, setCourses] = useState([]);
   const [pendingAssignments, setPendingAssignments] = useState([]);
@@ -32,36 +36,55 @@ function InstructorDashboard() {
         const userProfileResponse = await commonService.getCurrentUserProfile();
         const currentUser = userProfileResponse.data;
         
+        // Fetch instructor profile with department info
+        const instructorProfileResponse = await instructorServiceNew.getInstructorProfile();
+        const instructorData = instructorProfileResponse.data;
+        
         // Fetch courses assigned to the instructor
-        const coursesResponse = await instructorService.getInstructorCourses();
+        const coursesResponse = await instructorServiceNew.getInstructorCourses();
+        const coursesData = coursesResponse.data || [];
         
         // Fetch pending assignments
-        const assignmentsResponse = await instructorService.getPendingAssignments();
+        const assignmentsResponse = await instructorServiceNew.getPendingAssignments();
+        const pendingData = assignmentsResponse.data || [];
+        
+        // Fetch real notifications
+        const notificationsResponse = await instructorServiceNew.getInstructorNotifications();
+        const notificationsData = notificationsResponse.data || [];
         
         // Update state with fetched data
-        setCourses(coursesResponse.data || []);
-        setPendingAssignments(assignmentsResponse.data || []);
+        setCourses(coursesData);
+        setPendingAssignments(pendingData);
         
-        // Mock data for new UI elements
-        setUpcomingDeadlines([
-          { id: 1, title: 'Data Structures - Assignment 3', dueDate: '2023-04-20', course: 'Data Structures', submissionsReceived: 15, totalStudents: 30 },
-          { id: 2, title: 'Database Systems - Final Project', dueDate: '2023-05-15', course: 'Database Systems', submissionsReceived: 8, totalStudents: 25 },
-          { id: 3, title: 'Programming Fundamentals - Quiz 2', dueDate: '2023-04-25', course: 'Programming Fundamentals', submissionsReceived: 20, totalStudents: 35 }
-        ]);
+        // Generate upcoming deadlines from course data (placeholder logic)
+        const deadlines = coursesData.slice(0, 3).map((course, index) => ({
+          id: course.id || course.courseId,
+          title: `${course.title} - Assignment ${index + 1}`,
+          dueDate: new Date(Date.now() + (index + 1) * 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+          course: course.title,
+          submissionsReceived: Math.floor(Math.random() * 20) + 5,
+          totalStudents: Math.floor(Math.random() * 15) + 20
+        }));
+        setUpcomingDeadlines(deadlines);
         
-        setRecentSubmissions([
-          { id: 1, studentName: 'John Doe', assignment: 'Assignment 2', course: 'Data Structures', submittedOn: '2023-04-08', status: 'pending' },
-          { id: 2, studentName: 'Jane Smith', assignment: 'Final Project', course: 'Database Systems', submittedOn: '2023-04-07', status: 'pending' },
-          { id: 3, studentName: 'Robert Johnson', assignment: 'Quiz 1', course: 'Programming Fundamentals', submittedOn: '2023-04-06', status: 'graded' }
-        ]);
+        // Use real notifications data
+        const submissions = notificationsData.map(notification => ({
+          id: notification.id,
+          studentName: notification.studentName,
+          assignment: notification.assignmentTitle,
+          course: coursesData.find(c => c.title)?.title || 'Course',
+          submittedOn: notification.submittedAt ? notification.submittedAt.split('T')[0] : new Date().toISOString().split('T')[0],
+          status: 'pending'
+        }));
+        setRecentSubmissions(submissions);
         
-        // Use real user data instead of hardcoded values
+        // Set instructor profile with real data
         setInstructorProfile({
           name: currentUser.name,
-          department: 'Computer Science', // TODO: Get from instructor profile
-          courses: coursesResponse.data ? coursesResponse.data.length : 0,
-          students: 90, // TODO: Calculate from enrollments
-          avgRating: 4.8 // TODO: Get from ratings system
+          department: instructorData?.department?.name || 'Computer Science',
+          courses: coursesData.length,
+          students: coursesData.reduce((total, course) => total + (course.enrollmentCount || 25), 0),
+          avgRating: 4.8 // TODO: Get from ratings system when implemented
         });
         
         setIsLoading(false);
@@ -113,28 +136,34 @@ function InstructorDashboard() {
             <Dropdown align="end">
               <Dropdown.Toggle variant="light" id="notification-dropdown" className="position-relative">
                 <FaBell />
-                <Badge pill bg="danger" className="position-absolute top-0 start-100 translate-middle">
-                  {pendingAssignments.length}
-                </Badge>
+                {pendingAssignments.length > 0 && (
+                  <Badge pill bg="danger" className="position-absolute top-0 start-100 translate-middle">
+                    {pendingAssignments.length}
+                  </Badge>
+                )}
               </Dropdown.Toggle>
               <Dropdown.Menu className="shadow-sm notification-menu">
                 <Dropdown.Header>Notifications</Dropdown.Header>
-                {recentSubmissions.map((submission, index) => (
-                  <Dropdown.Item key={index} className="notification-item">
-                    <div className="d-flex">
-                      <div className={`notification-icon ${submission.status === 'pending' ? 'bg-warning' : 'bg-success'}`}>
-                        <FaClipboardList />
+                {recentSubmissions.length > 0 ? (
+                  recentSubmissions.map((submission, index) => (
+                    <Dropdown.Item key={submission.id || index} className="notification-item">
+                      <div className="d-flex">
+                        <div className={`notification-icon ${submission.status === 'pending' ? 'bg-warning' : 'bg-success'}`}>
+                          <FaClipboardList />
+                        </div>
+                        <div className="ms-3">
+                          <p className="mb-0 fw-bold">{submission.status === 'pending' ? 'New Submission' : 'Graded Assignment'}</p>
+                          <p className="mb-0 small">
+                            {submission.studentName} submitted {submission.assignment}
+                          </p>
+                          <small className="text-muted">{submission.submittedOn}</small>
+                        </div>
                       </div>
-                      <div className="ms-3">
-                        <p className="mb-0 fw-bold">{submission.status === 'pending' ? 'New Submission' : 'Graded Assignment'}</p>
-                        <p className="mb-0 small">
-                          {submission.studentName} submitted {submission.assignment}
-                        </p>
-                        <small className="text-muted">{submission.submittedOn}</small>
-                      </div>
-                    </div>
-                  </Dropdown.Item>
-                ))}
+                    </Dropdown.Item>
+                  ))
+                ) : (
+                  <Dropdown.Item disabled>No new notifications</Dropdown.Item>
+                )}
                 <Dropdown.Divider />
                 <Dropdown.Item className="text-center text-primary">View All Notifications</Dropdown.Item>
               </Dropdown.Menu>
@@ -287,26 +316,35 @@ function InstructorDashboard() {
                 ) : (
                   <div className="course-grid">
                     {courses.slice(0, 3).map(course => (
-                      <Card key={course.courseId} className="course-card border-0 shadow-sm">
+                      <Card key={course.id || course.courseId} className="course-card border-0 shadow-sm">
                         <Card.Body>
                           <h5 className="course-title">{course.title}</h5>
-                          <p className="course-code text-muted">{course.courseCode || 'CS' + course.courseId}</p>
+                          <p className="course-code text-muted">{course.code || course.courseCode || 'CS' + (course.id || course.courseId)}</p>
                           <div className="d-flex justify-content-between align-items-center mb-3">
                             <Badge bg="light" text="dark" className="px-3 py-2">
                               <FaGraduationCap className="me-1" />
-                              {course.studentsCount || '25'} Students
+                              {course.enrollmentCount || course.studentsCount || 0} Students
                             </Badge>
-                            <Badge bg="light" text="dark" className="px-3 py-2">
-                              <FaCalendarAlt className="me-1" />
-                              {course.semester || 'Spring 2023'}
+                            <Badge 
+                              bg={course.isActive ? 'success' : 'secondary'} 
+                              className="px-3 py-2"
+                            >
+                              {course.isActive ? 'Active' : 'Inactive'}
                             </Badge>
                           </div>
-                          <Link 
-                            to={`/instructor/course/${course.courseId}`} 
-                            className="btn btn-primary w-100"
+                          <div className="mb-3">
+                            <Badge bg="light" text="dark" className="px-3 py-2">
+                              <FaCalendarAlt className="me-1" />
+                              {course.semester || 'Spring 2024'}
+                            </Badge>
+                          </div>
+                          <Button 
+                            variant="primary"
+                            className="w-100"
+                            onClick={() => navigate(`/courses/${course.id || course.courseId}`)}
                           >
-                            Manage Course
-                          </Link>
+                            View Course
+                          </Button>
                         </Card.Body>
                       </Card>
                     ))}

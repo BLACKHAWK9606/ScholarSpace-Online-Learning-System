@@ -3,7 +3,7 @@ import {
   Container, Row, Col, Card, Button, Form, Table, 
   Modal, Spinner, Alert, Badge
 } from 'react-bootstrap';
-import { FaEdit, FaTrash, FaPlus, FaCheck, FaTimes } from 'react-icons/fa';
+import { FaEdit, FaTrash, FaPlus } from 'react-icons/fa';
 import { adminService } from '../../services/api';
 
 function ManageCourses() {
@@ -19,7 +19,7 @@ function ManageCourses() {
     courseName: '',
     description: '',
     creditHours: 3,
-    active: true,
+    isActive: true,
     department: ''
   });
   const [isEditing, setIsEditing] = useState(false);
@@ -39,14 +39,12 @@ function ManageCourses() {
       const response = await adminService.getAllCourses();
       console.log('Fetched courses:', response);
       
-      // Ensure we're working with an array
-      const coursesData = response && response.data ? response.data : [];
-      setCourses(coursesData);
+      setCourses(response.data || []);
       setError(null);
     } catch (err) {
       console.error("Error fetching courses:", err);
       setError("Failed to load courses. Please try again later.");
-      setCourses([]); // Set to empty array on error
+      setCourses([]);
     } finally {
       setLoading(false);
     }
@@ -58,13 +56,10 @@ function ManageCourses() {
       const response = await adminService.getAllDepartments();
       console.log('Fetched departments:', response);
       
-      // Ensure we're working with an array
-      const departmentsData = response && response.data ? response.data : [];
-      setDepartments(departmentsData);
+      setDepartments(response.data || []);
     } catch (err) {
       console.error("Error fetching departments:", err);
-      // Don't set error state here to avoid blocking the course display
-      setDepartments([]); // Set to empty array on error
+      setDepartments([]);
     }
   };
 
@@ -106,21 +101,42 @@ function ManageCourses() {
         description: currentCourse.description || '',
         creditHours: parseInt(currentCourse.creditHours, 10),
         departmentId: parseInt(currentCourse.department, 10),
-        isActive: currentCourse.active
+        isActive: currentCourse.isActive
       };
 
       console.log('Submitting course data:', courseData);
       
       if (isEditing) {
         await adminService.updateCourse(currentCourse.courseId, courseData);
+        
+        // Update the course in the local state immediately
+        setCourses(prevCourses => {
+          return prevCourses.map(course => {
+            const courseId = course.courseId || course.id;
+            if (courseId === currentCourse.courseId) {
+              return {
+                ...course,
+                code: courseData.code,
+                title: courseData.title,
+                description: courseData.description,
+                creditHours: courseData.creditHours,
+                isActive: courseData.isActive
+              };
+            }
+            return course;
+          });
+        });
+        
         setSuccessMessage("Course updated successfully!");
       } else {
         await adminService.createCourse(courseData);
         setSuccessMessage("Course created successfully!");
+        
+        // Refresh the entire list for new courses
+        setTimeout(() => {
+          fetchCourses();
+        }, 100);
       }
-      
-      // Update the courses list
-      fetchCourses();
       
       // Close the modal and reset form
       handleCloseModal();
@@ -149,7 +165,7 @@ function ManageCourses() {
       courseName: '',
       description: '',
       creditHours: 3,
-      active: true,
+      isActive: true,
       department: defaultDepartmentId
     });
     
@@ -169,7 +185,7 @@ function ManageCourses() {
       courseName: course.courseName || course.title,
       description: course.description || '',
       creditHours: course.creditHours,
-      active: course.isActive !== undefined ? course.isActive : (course.active !== undefined ? course.active : true),
+      isActive: course.isActive !== undefined ? course.isActive : true,
       department: course.department ? 
         (course.department.departmentId ? course.department.departmentId : 
          (course.department.id ? course.department.id : course.department)) : 
@@ -186,23 +202,6 @@ function ManageCourses() {
     setShowModal(false);
   };
 
-  // Toggle course active status
-  const toggleCourseStatus = async (courseId, currentStatus) => {
-    try {
-      if (currentStatus) {
-        await adminService.deactivateCourse(courseId);
-      } else {
-        await adminService.activateCourse(courseId);
-      }
-      // Refresh the courses list
-      fetchCourses();
-      setSuccessMessage(`Course ${currentStatus ? 'deactivated' : 'activated'} successfully!`);
-    } catch (err) {
-      console.error("Error toggling course status:", err);
-      setError("Failed to update course status. Please try again.");
-    }
-  };
-
   // Delete a course
   const handleDeleteCourse = async (courseId) => {
     if (window.confirm("Are you sure you want to delete this course? This action cannot be undone.")) {
@@ -217,6 +216,8 @@ function ManageCourses() {
       }
     }
   };
+
+
 
   // Render loading spinner
   if (loading && courses.length === 0) {
@@ -268,8 +269,8 @@ function ManageCourses() {
                     <td>{course.department ? (course.department.name || 'Unknown') : 'Not assigned'}</td>
                     <td>{course.creditHours}</td>
                     <td>
-                      <Badge bg={course.active || course.isActive ? "success" : "secondary"}>
-                        {course.active || course.isActive ? "Active" : "Inactive"}
+                      <Badge bg={course.isActive ? "success" : "secondary"}>
+                        {course.isActive ? "Active" : "Inactive"}
                       </Badge>
                     </td>
                     <td>
@@ -281,14 +282,6 @@ function ManageCourses() {
                           onClick={() => handleEditCourse(course)}
                         >
                           <FaEdit />
-                        </Button>
-                        <Button 
-                          variant="outline-success" 
-                          size="sm" 
-                          className="me-2" 
-                          onClick={() => toggleCourseStatus(course.courseId || course.id, course.active || course.isActive)}
-                        >
-                          {course.active || course.isActive ? <FaTimes /> : <FaCheck />}
                         </Button>
                         <Button 
                           variant="outline-danger" 
@@ -404,14 +397,20 @@ function ManageCourses() {
             </Row>
             
             <Form.Group className="mb-3">
-              <Form.Check 
+              <Form.Check
                 type="switch"
-                id="active-switch"
-                label="Active"
-                name="active"
-                checked={currentCourse.active}
+                id="course-status"
+                label={`Status: ${currentCourse.isActive ? 'Active' : 'Inactive'}`}
+                name="isActive"
+                checked={currentCourse.isActive}
                 onChange={handleInputChange}
               />
+              <Form.Text className="text-muted">
+                {currentCourse.isActive ? 
+                  'Course is available for enrollment and instruction' : 
+                  'Course is not available for enrollment'
+                }
+              </Form.Text>
             </Form.Group>
           </Modal.Body>
           <Modal.Footer>

@@ -102,12 +102,17 @@ public class UserController {
             user.setName(userDetails.getName());
         }
         
+        if (userDetails.getEmail() != null) {
+            user.setEmail(userDetails.getEmail());
+        }
+        
         if (userDetails.getRole() != null) {
             user.setRole(userDetails.getRole());
         }
         
-        User updatedUser = userService.updateUser(user);
-        return ResponseEntity.ok(updatedUser);
+        user.setActive(userDetails.isActive());
+        
+        return ResponseEntity.ok(userService.updateUser(user));
     }
     
     @PostMapping

@@ -11,6 +11,11 @@ import {
 import { commonService, adminService } from '../../services/api';
 import { adminService as adminServiceNew } from '../../services/adminService';
 import { useAuth } from '../../contexts/AuthContext';
+import InstitutionManagement from './InstitutionManagement';
+import StudentManagement from './StudentManagement';
+import ManageInstructors from './ManageInstructors';
+import ReportsTab from './ReportsTab';
+import EnhancedCourseManagement from './EnhancedCourseManagement';
 import './AdminDashboard.css'; // We'll create this file for custom styling
 
 function AdminDashboard() {
@@ -159,16 +164,19 @@ function AdminDashboard() {
             <Nav.Link eventKey="overview">Overview</Nav.Link>
           </Nav.Item>
           <Nav.Item>
-            <Nav.Link eventKey="courses">Courses</Nav.Link>
+            <Nav.Link eventKey="institutions">Institutions</Nav.Link>
+          </Nav.Item>
+          <Nav.Item>
+            <Nav.Link eventKey="students">Students</Nav.Link>
           </Nav.Item>
           <Nav.Item>
             <Nav.Link eventKey="instructors">Instructors</Nav.Link>
           </Nav.Item>
           <Nav.Item>
-            <Nav.Link eventKey="departments">Departments</Nav.Link>
+            <Nav.Link eventKey="courses">Courses</Nav.Link>
           </Nav.Item>
           <Nav.Item>
-            <Nav.Link eventKey="enrollments">Enrollments</Nav.Link>
+            <Nav.Link eventKey="reports">Reports</Nav.Link>
           </Nav.Item>
         </Nav>
 
@@ -237,52 +245,61 @@ function AdminDashboard() {
               <Col md={4}>
                 <Card className="h-100 shadow-sm">
                   <Card.Body>
+                    <h5 className="card-title">Manage Institutions</h5>
+                    <p className="card-text">Add, edit, or manage educational institutions.</p>
+                    <Button onClick={() => setActiveTab('institutions')} variant="primary">Go to Institutions</Button>
+                  </Card.Body>
+                </Card>
+              </Col>
+              <Col md={4}>
+                <Card className="h-100 shadow-sm">
+                  <Card.Body>
+                    <h5 className="card-title">Manage Students</h5>
+                    <p className="card-text">View students and manage enrollment requests.</p>
+                    <Button onClick={() => setActiveTab('students')} variant="primary">Go to Students</Button>
+                  </Card.Body>
+                </Card>
+              </Col>
+              <Col md={4}>
+                <Card className="h-100 shadow-sm">
+                  <Card.Body>
                     <h5 className="card-title">Manage Courses</h5>
-                    <p className="card-text">Add, edit, or deactivate courses in the system.</p>
-                    <Link to="/admin/courses" className="btn btn-primary">Go to Courses</Link>
-                  </Card.Body>
-                </Card>
-              </Col>
-              <Col md={4}>
-                <Card className="h-100 shadow-sm">
-                  <Card.Body>
-                    <h5 className="card-title">Manage Instructors</h5>
-                    <p className="card-text">Add new instructors or manage existing ones.</p>
-                    <Link to="/admin/instructors" className="btn btn-primary">Go to Instructors</Link>
-                  </Card.Body>
-                </Card>
-              </Col>
-              <Col md={4}>
-                <Card className="h-100 shadow-sm">
-                  <Card.Body>
-                    <h5 className="card-title">Manage Departments</h5>
-                    <p className="card-text">Create and manage academic departments.</p>
-                    <Link to="/admin/departments" className="btn btn-primary">Go to Departments</Link>
+                    <p className="card-text">Create and manage courses by department.</p>
+                    <Button onClick={() => setActiveTab('courses')} variant="primary">Go to Courses</Button>
                   </Card.Body>
                 </Card>
               </Col>
             </Row>
-            
-            <Row className="g-4 mb-4">
-              <Col md={6}>
-                <Card className="h-100 shadow-sm">
-                  <Card.Body>
-                    <h5 className="card-title">Assign Instructors</h5>
-                    <p className="card-text">Assign instructors to specific courses.</p>
-                    <Link to="/admin/course-assignment" className="btn btn-primary">Assign Instructors</Link>
-                  </Card.Body>
-                </Card>
-              </Col>
-              <Col md={6}>
-                <Card className="h-100 shadow-sm">
-                  <Card.Body>
-                    <h5 className="card-title">Enrollment Approvals</h5>
-                    <p className="card-text">Review and approve student enrollment requests.</p>
-                    <Link to="/admin/enrollment-approval" className="btn btn-primary">Review Enrollments</Link>
-                  </Card.Body>
-                </Card>
-              </Col>
-            </Row>
+          </div>
+        )}
+
+        {activeTab === 'institutions' && (
+          <div className="institutions-tab">
+            <InstitutionManagement />
+          </div>
+        )}
+
+        {activeTab === 'students' && (
+          <div className="students-tab">
+            <StudentManagement />
+          </div>
+        )}
+
+        {activeTab === 'instructors' && (
+          <div className="instructors-tab">
+            <ManageInstructors />
+          </div>
+        )}
+
+        {activeTab === 'courses' && (
+          <div className="courses-tab">
+            <EnhancedCourseManagement />
+          </div>
+        )}
+
+        {activeTab === 'reports' && (
+          <div className="reports-tab">
+            <ReportsTab />
           </div>
         )}
       </Container>

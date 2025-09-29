@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_URL = 'http://localhost:9090/api/';
+const API_URL = 'http://localhost:8080/api/';
 
 const api = axios.create({
   baseURL: API_URL,
@@ -73,6 +73,7 @@ const adminService = {
   getCoursesByDepartment: (departmentId) => api.get(`courses/department/${departmentId}`),
   createCourse: (courseData) => api.post('courses', courseData),
   updateCourse: (id, courseData) => api.put(`courses/${id}`, courseData),
+  deleteCourse: (id) => api.delete(`courses/${id}`),
   activateCourse: (id) => api.put(`courses/${id}/activate`),
   deactivateCourse: (id) => api.put(`courses/${id}/deactivate`),
   
@@ -95,6 +96,7 @@ const adminService = {
   
   // Instructor management
   getAllInstructors: () => api.get('instructors'),
+  getActiveInstructors: () => api.get('instructors/active'),
   getInstructorById: (id) => api.get(`instructors/${id}`),
   getInstructorByUserId: (userId) => api.get(`instructors/user/${userId}`),
   createInstructor: (instructorData) => {
@@ -151,22 +153,26 @@ const instructorService = {
       const user = JSON.parse(localStorage.getItem('user'));
       if (!user || !user.userId) throw new Error('User not found');
       
-      // This matches your CourseInstructor controller
-      return api.get(`instructors/${user.userId}/courses`);
+      // First get instructor by userId, then get their courses
+      const instructorResponse = await api.get(`instructors/user/${user.userId}`);
+      const instructor = instructorResponse.data;
+      
+      const coursesResponse = await api.get(`instructors/${instructor.instructorId}/courses`);
+      return coursesResponse.data.map(courseInstructor => courseInstructor.course);
     } catch (error) {
       console.error('Error fetching instructor courses:', error);
-      throw error;
+      return [];
     }
   },
   
   // Pending assignments to grade
   getPendingAssignments: async () => {
     try {
-      // This would target the ungraded submissions endpoint
-      return api.get('submissions/ungraded');
+      const response = await api.get('submissions/ungraded');
+      return response.data;
     } catch (error) {
       console.error('Error fetching pending assignments:', error);
-      throw error;
+      return [];
     }
   },
   
@@ -302,4 +308,8 @@ const studentService = {
   }
 };
 
+// Default export for the axios instance
+export default api;
+
+// Named exports for services
 export { commonService, adminService, instructorService, studentService };

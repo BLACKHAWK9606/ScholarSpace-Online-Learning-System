@@ -40,7 +40,7 @@ public class SecurityConfig {
                 // CRITICAL: Allow all OPTIONS requests (CORS preflight)
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                 
-                // Dashboard endpoints (allow all authenticated users)
+                // Dashboard endpoints - Admin gets full stats, others get limited view
                 .requestMatchers("/api/dashboard/**").authenticated()
                 
                 // Admin endpoints
@@ -49,10 +49,38 @@ public class SecurityConfig {
                 // Instructor endpoints  
                 .requestMatchers("/api/instructor/**").hasAnyAuthority("ROLE_ADMIN", "ROLE_INSTRUCTOR")
                 
-                // Student endpoints
+                // User Management - FIXED RBAC
+                .requestMatchers(HttpMethod.GET, "/api/users").hasAuthority("ROLE_ADMIN")
+                .requestMatchers(HttpMethod.POST, "/api/users").hasAuthority("ROLE_ADMIN")
+                .requestMatchers(HttpMethod.PUT, "/api/users/{id}").hasAuthority("ROLE_ADMIN")
+                .requestMatchers(HttpMethod.PUT, "/api/users/{id}/activate").hasAuthority("ROLE_ADMIN")
+                .requestMatchers(HttpMethod.PUT, "/api/users/{id}/deactivate").hasAuthority("ROLE_ADMIN")
+                .requestMatchers(HttpMethod.PUT, "/api/users/users/{id}/status").hasAuthority("ROLE_ADMIN")
+                .requestMatchers(HttpMethod.GET, "/api/users/role/{role}").hasAuthority("ROLE_ADMIN")
+                .requestMatchers(HttpMethod.GET, "/api/users/profile").authenticated()
+                .requestMatchers(HttpMethod.GET, "/api/users/{id}").hasAnyAuthority("ROLE_ADMIN", "ROLE_INSTRUCTOR")
+                
+                // Course Management - Refined permissions
+                .requestMatchers(HttpMethod.POST, "/api/courses").hasAnyAuthority("ROLE_ADMIN", "ROLE_INSTRUCTOR")
+                .requestMatchers(HttpMethod.PUT, "/api/courses/{id}").hasAnyAuthority("ROLE_ADMIN", "ROLE_INSTRUCTOR")
+                .requestMatchers(HttpMethod.DELETE, "/api/courses/{id}").hasAuthority("ROLE_ADMIN")
+                .requestMatchers(HttpMethod.GET, "/api/courses/**").hasAnyAuthority("ROLE_ADMIN", "ROLE_INSTRUCTOR", "ROLE_STUDENT")
+                
+                // Enrollment Management
                 .requestMatchers("/api/enrollments/student/**").hasAnyAuthority("ROLE_ADMIN", "ROLE_STUDENT")
-                .requestMatchers("/api/courses/**").hasAnyAuthority("ROLE_ADMIN", "ROLE_INSTRUCTOR", "ROLE_STUDENT")
-                .requestMatchers("/api/users/**").hasAnyAuthority("ROLE_ADMIN", "ROLE_INSTRUCTOR", "ROLE_STUDENT")
+                .requestMatchers("/api/enrollments/**").hasAnyAuthority("ROLE_ADMIN", "ROLE_INSTRUCTOR")
+                
+                // Institution & Department Management
+                .requestMatchers("/api/institutions/**").hasAuthority("ROLE_ADMIN")
+                .requestMatchers("/api/departments/**").hasAuthority("ROLE_ADMIN")
+                
+                // File Management
+                .requestMatchers(HttpMethod.POST, "/api/files/**").hasAnyAuthority("ROLE_ADMIN", "ROLE_INSTRUCTOR")
+                .requestMatchers(HttpMethod.GET, "/api/files/**").authenticated()
+                
+                // Submissions
+                .requestMatchers(HttpMethod.POST, "/api/submissions/**").hasAuthority("ROLE_STUDENT")
+                .requestMatchers(HttpMethod.GET, "/api/submissions/**").hasAnyAuthority("ROLE_ADMIN", "ROLE_INSTRUCTOR", "ROLE_STUDENT")
                 
                 // General API endpoints
                 .requestMatchers("/api/**").authenticated()

@@ -135,9 +135,20 @@ function Login() {
               </Form>
             </Card.Body>
             
-            <Card.Footer className="text-center py-3 bg-light">
-              <div className="mt-2">
-                Don't have an account yet? <Link to="/register" className="text-primary fw-bold text-decoration-none">Register now</Link>
+            <Card.Footer className="text-center py-4 bg-light">
+              <div className="border-bottom pb-3 mb-3">
+                <small className="text-muted">Admin or Instructor?</small>
+                <div className="mt-1">
+                  <small>Contact your institution administrator for account setup</small>
+                </div>
+              </div>
+              
+              <div className="d-flex align-items-center justify-content-center">
+                <span className="text-muted me-2">🎓</span>
+                <span className="me-2">New Student?</span>
+                <Link to="/register" className="btn btn-outline-primary btn-sm fw-bold">
+                  Create Student Account
+                </Link>
               </div>
             </Card.Footer>
           </Card>

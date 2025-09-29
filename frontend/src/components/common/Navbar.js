@@ -1,6 +1,7 @@
 import React from 'react';
-import { Navbar, Nav, Container, Button } from 'react-bootstrap';
+import { Navbar, Nav, Container, Button, NavDropdown } from 'react-bootstrap';
 import { Link, useNavigate } from 'react-router-dom';
+import { FaUser, FaBell } from 'react-icons/fa';
 import { useAuth } from '../../contexts/AuthContext';
 
 function AppNavbar() {
@@ -47,20 +48,30 @@ function AppNavbar() {
           {user ? (
             // Authenticated user navigation
             <Nav className="ms-auto align-items-center">
-              {/* User greeting - use name from our backend format */}
-              <Navbar.Text className="me-3">
-                Welcome, {user.name}
-              </Navbar.Text>
-
               {/* Dashboard link based on role */}
               <Nav.Link as={Link} to={getDashboardRoute()} className="me-3">
                 Dashboard
               </Nav.Link>
 
-              {/* Logout button */}
-              <Button variant="outline-light" onClick={handleLogout}>
-                Logout
-              </Button>
+              {/* Notifications */}
+              <Nav.Link href="#" className="me-3">
+                <FaBell />
+              </Nav.Link>
+
+              {/* Profile Dropdown */}
+              <NavDropdown 
+                title={<><FaUser className="me-1" />{user.name}</>} 
+                id="profile-dropdown"
+                align="end"
+              >
+                <NavDropdown.Item as={Link} to="/profile">
+                  My Profile
+                </NavDropdown.Item>
+                <NavDropdown.Divider />
+                <NavDropdown.Item onClick={handleLogout}>
+                  Logout
+                </NavDropdown.Item>
+              </NavDropdown>
             </Nav>
           ) : (
             // Unauthenticated user navigation
