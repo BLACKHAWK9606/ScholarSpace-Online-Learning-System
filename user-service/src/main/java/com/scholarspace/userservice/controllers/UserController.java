@@ -16,6 +16,7 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
 
 import jakarta.servlet.http.HttpServletRequest;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -347,6 +348,12 @@ public class UserController {
             
             User user = userService.registerUser(name, email, password, role);
             
+            // Set first login flag for instructors
+            if (role == Role.INSTRUCTOR) {
+                user.setFirstLogin(true);
+                user = userService.updateUser(user);
+            }
+            
             // Validate department BEFORE creating user to avoid partial state
             Long departmentId = null;
             if (userRequest.containsKey("departmentId")) {
@@ -379,6 +386,26 @@ public class UserController {
         }
     }
     
+    @GetMapping("/debug-auth")
+    @Operation(
+        summary = "Debug Authentication", 
+        description = "Debug endpoint to check authentication status"
+    )
+    public ResponseEntity<?> debugAuth(HttpServletRequest request) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        
+        Map<String, Object> debugInfo = new HashMap<>();
+        debugInfo.put("requestURI", request.getRequestURI());
+        debugInfo.put("authorizationHeader", request.getHeader("Authorization"));
+        debugInfo.put("hasAuthentication", authentication != null);
+        debugInfo.put("isAuthenticated", authentication != null ? authentication.isAuthenticated() : false);
+        debugInfo.put("principal", authentication != null ? authentication.getPrincipal().toString() : "null");
+        debugInfo.put("authorities", authentication != null ? authentication.getAuthorities().toString() : "null");
+        debugInfo.put("name", authentication != null ? authentication.getName() : "null");
+        
+        return ResponseEntity.ok(debugInfo);
+    }
+    
     @PutMapping("/change-password")
     @Operation(
         summary = "Change Password", 
@@ -387,8 +414,11 @@ public class UserController {
     @ApiResponse(responseCode = "200", description = "Password changed successfully")
     @ApiResponse(responseCode = "401", description = "User not authenticated")
     @ApiResponse(responseCode = "400", description = "Invalid password or validation failed")
-    public ResponseEntity<?> changePassword(@RequestBody Map<String, String> passwordData) {
+    public ResponseEntity<?> changePassword(HttpServletRequest request, @RequestBody Map<String, String> passwordData) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        
+
+        
         if (authentication == null || !authentication.isAuthenticated()) {
             return ResponseEntity.status(401).body(Map.of("error", "User not authenticated"));
         }
@@ -404,6 +434,7 @@ public class UserController {
             userService.changePassword(email, newPassword);
             return ResponseEntity.ok(Map.of("message", "Password changed successfully"));
         } catch (Exception e) {
+
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
     }

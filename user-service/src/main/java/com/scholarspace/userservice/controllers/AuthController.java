@@ -53,7 +53,7 @@ public class AuthController {
             String email = loginRequest.get("email");
             String password = loginRequest.get("password");
             
-            Map<String, String> response = authService.login(email, password);
+            Map<String, Object> response = authService.login(email, password);
             return ResponseEntity.ok(response);
         } catch (Exception e) {
             Map<String, String> errorResponse = new HashMap<>();

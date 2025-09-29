@@ -7,6 +7,10 @@ import api from '../../services/api';
 
 function ChangePassword() {
   const { user, updateUser } = useAuth();
+  
+  // Debug logging
+  console.log('ChangePassword - user:', user);
+  console.log('ChangePassword - user.isFirstLogin:', user?.isFirstLogin, 'type:', typeof user?.isFirstLogin);
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
     newPassword: '',
@@ -44,6 +48,7 @@ function ChangePassword() {
       });
 
       // Update user to mark first login as complete
+      console.log('ChangePassword - updating user isFirstLogin to false');
       updateUser({ ...user, isFirstLogin: false });
 
       // Navigate to appropriate dashboard

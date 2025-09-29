@@ -113,10 +113,6 @@ public class UserService {
 
     public void updateLastLogin(User user) {
         user.setLastLogin(LocalDateTime.now());
-        // Only update first login for instructors who actually have it set
-        if (user.getRole() == Role.INSTRUCTOR && user.isFirstLogin()) {
-            user.setFirstLogin(false);
-        }
         userRepository.save(user);
     }
     

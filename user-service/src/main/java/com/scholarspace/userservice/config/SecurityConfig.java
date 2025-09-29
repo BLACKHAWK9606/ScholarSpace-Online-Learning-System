@@ -25,7 +25,14 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-            .cors(cors -> cors.disable())
+            .cors(cors -> cors.configurationSource(request -> {
+                var corsConfig = new org.springframework.web.cors.CorsConfiguration();
+                corsConfig.setAllowedOriginPatterns(java.util.List.of("*"));
+                corsConfig.setAllowedMethods(java.util.List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+                corsConfig.setAllowedHeaders(java.util.List.of("*"));
+                corsConfig.setAllowCredentials(true);
+                return corsConfig;
+            }))
             .csrf(csrf -> csrf.disable())
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/auth/**").permitAll()
@@ -39,7 +46,13 @@ public class SecurityConfig {
                 // CRITICAL: Allow all OPTIONS requests (CORS preflight)
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                 
-                // User Management - FIXED RBAC
+                // User profile endpoints (own profile access) - MOVED UP for priority
+                .requestMatchers(HttpMethod.GET, "/api/users/profile").authenticated()
+                .requestMatchers(HttpMethod.PUT, "/api/users/profile").authenticated()
+                .requestMatchers(HttpMethod.PUT, "/api/users/change-password").authenticated()
+                .requestMatchers(HttpMethod.GET, "/api/users/debug-auth").authenticated()
+                
+                // User Management - Admin only
                 .requestMatchers(HttpMethod.GET, "/api/users").hasAuthority("ROLE_ADMIN")
                 .requestMatchers(HttpMethod.POST, "/api/users").hasAuthority("ROLE_ADMIN")
                 .requestMatchers(HttpMethod.PUT, "/api/users/{id}").hasAuthority("ROLE_ADMIN")
@@ -47,10 +60,8 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.PUT, "/api/users/{id}/deactivate").hasAuthority("ROLE_ADMIN")
                 .requestMatchers(HttpMethod.PUT, "/api/users/users/{id}/status").hasAuthority("ROLE_ADMIN")
                 .requestMatchers(HttpMethod.GET, "/api/users/role/{role}").hasAuthority("ROLE_ADMIN")
-                
-                // User profile endpoints (own profile access)
-                .requestMatchers(HttpMethod.GET, "/api/users/profile").authenticated()
                 .requestMatchers(HttpMethod.GET, "/api/users/{id}").hasAnyAuthority("ROLE_ADMIN", "ROLE_INSTRUCTOR")
+                .requestMatchers(HttpMethod.GET, "/api/users/stats").hasAuthority("ROLE_ADMIN")
                 
                 // General API endpoints
                 .requestMatchers("/api/**").authenticated()

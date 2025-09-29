@@ -85,6 +85,7 @@ spring:
                 - SetPath=/
           default-filters:
             - DedupeResponseHeader=Access-Control-Allow-Credentials Access-Control-Allow-Origin
+            - PreserveHostHeader
           globalcors:
             cors-configurations:
               '[/**]':

@@ -10,6 +10,7 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import com.scholarspace.userservice.models.Role;
 import com.scholarspace.userservice.models.User;
 import com.scholarspace.userservice.repositories.UserRepository;
 
@@ -32,7 +33,7 @@ public class AuthService {
         this.jwtService = jwtService;
     }
 
-    public Map<String, String> login(String email, String password) {
+    public Map<String, Object> login(String email, String password) {
         Optional<User> userOptional = userRepository.findByEmail(email);
         
         if (userOptional.isEmpty()) {
@@ -49,17 +50,21 @@ public class AuthService {
             throw new RuntimeException("Invalid password");
         }
         
+        // Check if this is first login for instructors
+        boolean isFirstLogin = user.getRole() == Role.INSTRUCTOR && user.isFirstLogin();
+        
         // Update last login timestamp
         userService.updateLastLogin(user);
         
         String token = jwtService.generateToken(user);
         
-        Map<String, String> response = new HashMap<>();
+        Map<String, Object> response = new HashMap<>();
         response.put("token", token);
         response.put("userId", user.getUserId().toString());
         response.put("name", user.getName());
         response.put("email", user.getEmail());
         response.put("role", user.getRole().toString());
+        response.put("isFirstLogin", isFirstLogin);
         
         return response;
     }

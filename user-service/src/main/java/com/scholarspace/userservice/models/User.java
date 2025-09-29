@@ -41,7 +41,7 @@ public class User {
     private LocalDateTime lastLogin;
     
     @Column(name = "is_first_login")
-    private Boolean isFirstLogin = false;
+    private Boolean isFirstLogin = true;
     
     @Column(name = "department_id")
     private Long departmentId;
@@ -166,8 +166,9 @@ public class User {
         this.emergencyContact = emergencyContact;
     }
     
+    @JsonProperty("isFirstLogin")
     public boolean isFirstLogin() {
-        return isFirstLogin != null ? isFirstLogin : false;
+        return isFirstLogin != null ? isFirstLogin : true;
     }
     
     public void setFirstLogin(Boolean firstLogin) {

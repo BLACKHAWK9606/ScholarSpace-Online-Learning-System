@@ -10,7 +10,6 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
-import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
@@ -92,13 +91,11 @@ public class JwtFilter extends OncePerRequestFilter {
                     // Add user info to authentication details for easy access
                     authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                     SecurityContextHolder.getContext().setAuthentication(authToken);
-                    
-                    // Debug logging (remove in production)
-                    logger.debug("Authentication successful for user: " + userEmail + " with role: " + springRole);
+
                 }
             }
         } catch (Exception e) {
-            logger.error("JWT Authentication Error for token: " + jwt.substring(0, Math.min(jwt.length(), 20)) + "...", e);
+            logger.error("JWT Authentication Error", e);
             // Clear security context on any error
             SecurityContextHolder.clearContext();
         }
