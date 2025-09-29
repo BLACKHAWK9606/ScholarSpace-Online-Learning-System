@@ -100,38 +100,13 @@ const adminService = {
   getInstructorById: (id) => api.get(`instructors/${id}`),
   getInstructorByUserId: (userId) => api.get(`instructors/user/${userId}`),
   createInstructor: (instructorData) => {
-    console.log('Creating instructor with data:', instructorData);
-    // First, create a user with INSTRUCTOR role directly using the UserService
     return api.post('users', {
       name: `${instructorData.firstName} ${instructorData.lastName}`,
       email: instructorData.email,
       password: instructorData.password,
       role: 'INSTRUCTOR',
-      isActive: instructorData.isActive
-    })
-    .then(response => {
-      console.log('User created successfully:', response.data);
-      // Then create the instructor with the user ID
-      const userId = response.data.userId;
-      return api.post('instructors', {
-        userId: userId,
-        departmentId: instructorData.departmentId,
-        specialization: instructorData.specialization || '',
-        officeLocation: instructorData.officeLocation || '',
-        officeHours: instructorData.officeHours || ''
-      });
-    })
-    .then(response => {
-      console.log('Instructor created successfully:', response.data);
-      return response;
-    })
-    .catch(error => {
-      console.error('Error in createInstructor:', error);
-      if (error.response) {
-        console.error('Response data:', error.response.data);
-        console.error('Response status:', error.response.status);
-      }
-      throw error;
+      isActive: instructorData.isActive,
+      departmentId: instructorData.departmentId
     });
   },
   updateInstructor: (id, instructorData) => api.put(`instructors/${id}`, instructorData),
@@ -141,8 +116,9 @@ const adminService = {
     api.post(`instructors/${instructorId}/courses/${courseId}`, { role }),
   removeInstructorFromCourse: (instructorId, courseId) => 
     api.delete(`instructors/${instructorId}/courses/${courseId}`),
-  getInstructorsByCourse: (courseId) => api.get(`instructors/courses/${courseId}`),
-  getCourseInstructors: (courseId) => api.get(`instructors/courses/${courseId}`)
+  getInstructorsByCourse: (courseId) => api.get(`courses/${courseId}/instructors`),
+  getCourseInstructors: (courseId) => api.get(`courses/${courseId}/instructors`),
+  getInstructorCourses: (instructorId) => api.get(`courses/instructor/${instructorId}`)
 };
 
 // Instructor API calls

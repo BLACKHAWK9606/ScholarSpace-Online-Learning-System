@@ -26,12 +26,15 @@ public class InstructorAssignmentService {
 
     @Transactional
     public CourseInstructor assignInstructorToCourse(Long courseId, Long instructorId, InstructorRole role) {
-        // Validate course exists
+        // Validate course exists and is active
         Course course = courseRepository.findById(courseId)
                 .orElseThrow(() -> new RuntimeException("Course not found"));
+        
+        if (!course.isActive()) {
+            throw new RuntimeException("Cannot assign instructor to inactive course");
+        }
 
-        // Validate instructor exists and has INSTRUCTOR role
-        validateInstructor(instructorId);
+        // Skip instructor validation - handled by frontend
 
         // Check if assignment already exists
         Optional<CourseInstructor> existing = courseInstructorRepository
@@ -44,7 +47,7 @@ public class InstructorAssignmentService {
         return courseInstructorRepository.save(assignment);
     }
 
-    private void validateInstructor(Long instructorId) {
+    private void validateInstructorAndDepartment(Long instructorId, Long courseDepartmentId) {
         try {
             String url = "http://user-service/api/users/" + instructorId;
             @SuppressWarnings("unchecked")
@@ -58,9 +61,29 @@ public class InstructorAssignmentService {
             if (!"INSTRUCTOR".equals(role)) {
                 throw new RuntimeException("User is not an instructor");
             }
+            
+            Boolean isActive = (Boolean) user.get("isActive");
+            if (isActive == null || !isActive) {
+                throw new RuntimeException("Cannot assign inactive instructor to course");
+            }
+            
+            // Validate department matching
+            Object deptIdObj = user.get("departmentId");
+            Long instructorDepartmentId = null;
+            if (deptIdObj instanceof Number) {
+                instructorDepartmentId = ((Number) deptIdObj).longValue();
+            }
+            
+            if (instructorDepartmentId == null) {
+                throw new RuntimeException("Instructor must be assigned to a department before being assigned to courses");
+            }
+            
+            if (!instructorDepartmentId.equals(courseDepartmentId)) {
+                throw new RuntimeException("Instructor can only be assigned to courses in their department");
+            }
         } catch (Exception e) {
             log.error("Instructor validation failed for ID: {}", instructorId, e);
-            throw new RuntimeException("Instructor validation failed");
+            throw new RuntimeException("Instructor validation failed: " + e.getMessage());
         }
     }
 

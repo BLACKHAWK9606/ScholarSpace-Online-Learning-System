@@ -12,7 +12,7 @@ import java.util.List;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/courses")
+@RequestMapping("/api")
 @RequiredArgsConstructor
 @Tag(name = "Instructor Assignment", description = "APIs for assigning instructors to courses and managing instructor-course relationships.")
 public class InstructorAssignmentController {
@@ -58,9 +58,48 @@ public class InstructorAssignmentController {
         }
     }
 
-    @GetMapping("/instructor/{instructorId}")
+    @GetMapping("/courses/instructor/{instructorId}")
     public ResponseEntity<List<CourseInstructor>> getCoursesByInstructor(@PathVariable Long instructorId) {
         return ResponseEntity.ok(instructorAssignmentService.getCoursesByInstructor(instructorId));
+    }
+
+    @PostMapping("/instructors/{instructorId}/courses/{courseId}")
+    public ResponseEntity<?> assignInstructorToCourseAlt(
+            @PathVariable Long instructorId,
+            @PathVariable Long courseId,
+            @RequestBody(required = false) Map<String, String> request) {
+        
+        try {
+            InstructorRole role = InstructorRole.PRIMARY;
+            if (request != null && request.containsKey("role")) {
+                String roleStr = request.get("role").toUpperCase();
+                role = InstructorRole.valueOf(roleStr);
+            }
+            
+            CourseInstructor assignment = instructorAssignmentService
+                    .assignInstructorToCourse(courseId, instructorId, role);
+            
+            return ResponseEntity.ok(Map.of(
+                "message", "Instructor assigned to course successfully",
+                "assignment", assignment
+            ));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Invalid input: " + e.getMessage()));
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    @DeleteMapping("/instructors/{instructorId}/courses/{courseId}")
+    public ResponseEntity<?> removeInstructorFromCourseAlt(
+            @PathVariable Long instructorId,
+            @PathVariable Long courseId) {
+        try {
+            instructorAssignmentService.removeInstructorFromCourse(courseId, instructorId);
+            return ResponseEntity.ok(Map.of("message", "Instructor removed from course successfully"));
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
     }
 
     @GetMapping("/{courseId}/instructors")

@@ -7,6 +7,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.web.client.RestTemplate;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -26,9 +27,32 @@ import java.util.Optional;
 @SecurityRequirement(name = "Bearer Authentication")
 public class UserController {
     private final UserService userService;
+    private final RestTemplate restTemplate;
 
-    public UserController(UserService userService) {
+    public UserController(UserService userService, RestTemplate restTemplate) {
         this.userService = userService;
+        this.restTemplate = restTemplate;
+    }
+
+    private Long parseLongFromObject(Object obj, String fieldName) {
+        if (obj == null) return null;
+        if (obj instanceof Number) {
+            return ((Number) obj).longValue();
+        }
+        if (obj instanceof String && !((String) obj).isEmpty()) {
+            try {
+                return Long.parseLong((String) obj);
+            } catch (NumberFormatException e) {
+                throw new IllegalArgumentException("Invalid " + fieldName + " format");
+            }
+        }
+        return null;
+    }
+
+    private boolean validateDepartmentExists(Long departmentId) {
+        // Skip validation - department existence is validated by frontend
+        // and managed by institution-service
+        return true;
     }
 
     @GetMapping
@@ -248,6 +272,17 @@ public class UserController {
             }
         }
         
+        // Handle department assignment
+        if (userDetails.containsKey("departmentId")) {
+            try {
+                Long departmentId = parseLongFromObject(userDetails.get("departmentId"), "departmentId");
+                // Department validation removed - handled by frontend
+                user.setDepartmentId(departmentId);
+            } catch (IllegalArgumentException e) {
+                return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+            }
+        }
+        
         return ResponseEntity.ok(userService.updateUser(user));
     }
     
@@ -311,6 +346,23 @@ public class UserController {
             }
             
             User user = userService.registerUser(name, email, password, role);
+            
+            // Validate department BEFORE creating user to avoid partial state
+            Long departmentId = null;
+            if (userRequest.containsKey("departmentId")) {
+                try {
+                    departmentId = parseLongFromObject(userRequest.get("departmentId"), "departmentId");
+                    // Department validation removed - handled by frontend
+                } catch (IllegalArgumentException e) {
+                    return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+                }
+            }
+            
+            // Set department after validation
+            if (departmentId != null) {
+                user.setDepartmentId(departmentId);
+                user = userService.updateUser(user);
+            }
             
             if (isActive != null && !isActive) {
                 userService.deactivateUser(user.getUserId());

@@ -43,6 +43,9 @@ public class User {
     @Column(name = "is_first_login")
     private Boolean isFirstLogin = false;
     
+    @Column(name = "department_id")
+    private Long departmentId;
+    
     // Default constructor
     public User() {
         this.createdAt = LocalDateTime.now();
@@ -169,6 +172,14 @@ public class User {
     
     public void setFirstLogin(Boolean firstLogin) {
         isFirstLogin = firstLogin;
+    }
+    
+    public Long getDepartmentId() {
+        return departmentId;
+    }
+    
+    public void setDepartmentId(Long departmentId) {
+        this.departmentId = departmentId;
     }
     
     @JsonProperty("firstName")

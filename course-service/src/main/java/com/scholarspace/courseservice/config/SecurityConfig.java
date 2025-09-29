@@ -46,12 +46,19 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                 
                 // Course management - Admin only
-                .requestMatchers("/api/courses", "/api/courses/*", "/api/courses/*/activate", "/api/courses/*/deactivate").hasAuthority("ROLE_ADMIN")
+                .requestMatchers(HttpMethod.POST, "/api/courses").hasAuthority("ROLE_ADMIN")
+                .requestMatchers(HttpMethod.PUT, "/api/courses/**").hasAuthority("ROLE_ADMIN")
+                .requestMatchers(HttpMethod.DELETE, "/api/courses/**").hasAuthority("ROLE_ADMIN")
+                .requestMatchers("/api/courses/*/activate", "/api/courses/*/deactivate").hasAuthority("ROLE_ADMIN")
+                
+                // Course viewing - Allow all authenticated users
+                .requestMatchers(HttpMethod.GET, "/api/courses/**").authenticated()
                 
                 // Instructor assignment - Admin only
-                .requestMatchers("/api/courses/*/instructors/**").hasAuthority("ROLE_ADMIN")
+                .requestMatchers("/api/instructors/*/courses/**").hasAuthority("ROLE_ADMIN")
+                .requestMatchers("/api/*/instructors/**").hasAuthority("ROLE_ADMIN")
                 
-                // Course viewing - Admin and Instructor access
+                // Course viewing by instructor - Admin and Instructor access
                 .requestMatchers("/api/courses/instructor/**").hasAnyAuthority("ROLE_ADMIN", "ROLE_INSTRUCTOR")
                 
                 // Course content management - Instructors only
@@ -82,6 +89,9 @@ public class SecurityConfig {
                 
                 // Dashboard stats - Admin only
                 .requestMatchers("/api/dashboard/**").hasAuthority("ROLE_ADMIN")
+                
+                // Course stats - Allow authenticated users
+                .requestMatchers("/api/courses/stats").authenticated()
                 
                 // All other requests require authentication
                 .anyRequest().authenticated()

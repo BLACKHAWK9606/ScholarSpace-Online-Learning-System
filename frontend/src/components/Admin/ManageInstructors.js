@@ -4,30 +4,7 @@ import {
   Spinner, Alert, Row, Col
 } from 'react-bootstrap';
 import { FaEdit, FaUserPlus, FaChevronDown, FaChevronRight, FaBook, FaPlus, FaTimes } from 'react-icons/fa';
-import { adminService } from '../../services/api';
-import axios from 'axios';
-
-// Create a direct API instance for direct calls
-const api = axios.create({
-  baseURL: 'http://localhost:9090/api/',
-  headers: {
-    'Content-Type': 'application/json',
-  }
-});
-
-// Add interceptor to include token in all requests
-api.interceptors.request.use(
-  (config) => {
-    const token = localStorage.getItem('token');
-    if (token) {
-      config.headers['Authorization'] = `Bearer ${token}`;
-    }
-    return config;
-  },
-  (error) => {
-    return Promise.reject(error);
-  }
-);
+import api, { adminService } from '../../services/api';
 
 function ManageInstructors() {
   // State for instructors and UI
@@ -65,14 +42,24 @@ function ManageInstructors() {
   const fetchInstructors = async () => {
     setLoading(true);
     try {
-      const response = await adminService.getUsersByRole('INSTRUCTOR');
-      const instructorUsers = response.data || [];
-      // Transform user data to instructor format
-      const transformedInstructors = instructorUsers.map(user => ({
-        instructorId: user.userId, // Use userId as instructorId for now
-        user: user,
-        department: { name: 'Not Assigned' } // Default department
-      }));
+      const [instructorsResponse, departmentsResponse] = await Promise.all([
+        adminService.getUsersByRole('INSTRUCTOR'),
+        adminService.getAllDepartments()
+      ]);
+      
+      const instructorUsers = instructorsResponse.data || [];
+      const allDepartments = departmentsResponse.data || [];
+      
+      // Transform user data to instructor format with department info
+      const transformedInstructors = instructorUsers.map(user => {
+        const department = allDepartments.find(dept => dept.departmentId === user.departmentId);
+        return {
+          instructorId: user.userId,
+          user: user,
+          department: department || { name: 'Not Assigned' }
+        };
+      });
+      
       setInstructors(transformedInstructors);
       setError(null);
     } catch (err) {
@@ -108,7 +95,17 @@ function ManageInstructors() {
     }
   };
 
-  // Toggle instructor expansion
+  // Function to fetch instructor courses
+  const fetchInstructorCourses = async (instructorId) => {
+    try {
+      const response = await adminService.getInstructorCourses(instructorId);
+      return response.data || [];
+    } catch (error) {
+      console.error('Error fetching instructor courses:', error);
+      return [];
+    }
+  };
+
   const toggleInstructor = async (instructorId) => {
     const newExpanded = new Set(expandedInstructors);
     if (newExpanded.has(instructorId)) {
@@ -116,8 +113,13 @@ function ManageInstructors() {
     } else {
       newExpanded.add(instructorId);
       if (!instructorCourses[instructorId]) {
-        // For now, set empty courses since we don't have instructor-course relationships
-        setInstructorCourses(prev => ({ ...prev, [instructorId]: [] }));
+        try {
+          const courses = await fetchInstructorCourses(instructorId);
+          setInstructorCourses(prev => ({ ...prev, [instructorId]: courses }));
+        } catch (error) {
+          console.error('Error fetching instructor courses:', error);
+          setInstructorCourses(prev => ({ ...prev, [instructorId]: [] }));
+        }
       }
     }
     setExpandedInstructors(newExpanded);
@@ -129,17 +131,35 @@ function ManageInstructors() {
     setShowCourseModal(true);
   };
 
-  // Assign course to instructor (placeholder for now)
   const assignCourseToInstructor = async (courseId) => {
-    setSuccessMessage('Course assignment feature coming soon');
-    setShowCourseModal(false);
-    setTimeout(() => setSuccessMessage(''), 3000);
+    try {
+      const instructorId = selectedInstructor.instructorId || selectedInstructor.user?.userId;
+      await adminService.assignInstructorToCourse(instructorId, courseId, 'PRIMARY');
+      setSuccessMessage('Course assigned successfully!');
+      setShowCourseModal(false);
+      // Refresh courses for this instructor
+      const courses = await fetchInstructorCourses(instructorId);
+      setInstructorCourses(prev => ({ ...prev, [instructorId]: courses }));
+      setTimeout(() => setSuccessMessage(''), 3000);
+    } catch (error) {
+      setError(error.response?.data?.error || 'Failed to assign course');
+    }
   };
 
-  // Remove course from instructor (placeholder for now)
   const removeCourseFromInstructor = async (instructorId, courseId) => {
-    setSuccessMessage('Course removal feature coming soon');
-    setTimeout(() => setSuccessMessage(''), 3000);
+    if (window.confirm('Are you sure you want to remove this course assignment?')) {
+      try {
+        await adminService.removeInstructorFromCourse(instructorId, courseId);
+        setSuccessMessage('Course removed successfully!');
+        // Refresh courses for this instructor
+        const courses = await fetchInstructorCourses(instructorId);
+        setInstructorCourses(prev => ({ ...prev, [instructorId]: courses }));
+        setTimeout(() => setSuccessMessage(''), 3000);
+      } catch (error) {
+        setError(error.response?.data?.error || 'Failed to remove course');
+        setTimeout(() => setError(''), 3000);
+      }
+    }
   };
 
   // Handle input change for form fields
@@ -187,41 +207,16 @@ function ManageInstructors() {
         const updateData = {
           name: `${currentInstructor.firstName} ${currentInstructor.lastName}`,
           email: currentInstructor.email,
-          isActive: currentInstructor.isActive
+          isActive: currentInstructor.isActive,
+          departmentId: currentInstructor.departmentId
         };
         
         await api.put(`users/${currentInstructor.userId}`, updateData);
         
-        // Update the instructor's department
-        if (currentInstructor.instructorId && currentInstructor.departmentId) {
-          await adminService.updateInstructor(currentInstructor.instructorId, {
-            departmentId: currentInstructor.departmentId,
-            specialization: currentInstructor.specialization || '',
-            officeLocation: currentInstructor.officeLocation || '',
-            officeHours: currentInstructor.officeHours || ''
-          });
-        }
+        // Department is already updated in the user record above
         
-        // Update the instructor in the local state immediately
-        const updatedName = `${currentInstructor.firstName} ${currentInstructor.lastName}`;
-        setInstructors(prevInstructors => 
-          prevInstructors.map(instructor => {
-            const instructorUserId = instructor.user?.userId || instructor.userId;
-            if (instructorUserId === currentInstructor.userId) {
-              return {
-                ...instructor,
-                user: {
-                  ...instructor.user,
-                  name: updatedName,
-                  email: currentInstructor.email,
-                  isActive: currentInstructor.isActive,
-                  userId: currentInstructor.userId
-                }
-              };
-            }
-            return instructor;
-          })
-        );
+        // Refresh the instructor list to get updated department info
+        await fetchInstructors();
         
         setSuccessMessage("Instructor updated successfully!");
       } else {
@@ -231,7 +226,8 @@ function ManageInstructors() {
           email: currentInstructor.email,
           password: currentInstructor.password,
           role: 'INSTRUCTOR',
-          isActive: currentInstructor.isActive
+          isActive: currentInstructor.isActive,
+          departmentId: currentInstructor.departmentId
         });
         
         setSuccessMessage("Instructor created successfully!");
@@ -239,13 +235,10 @@ function ManageInstructors() {
       
       handleCloseModal();
       
-      // Refresh the instructor list to ensure consistency
-      if (!isEditing) {
-        // For new instructors, refresh the entire list
-        setTimeout(() => {
-          fetchInstructors();
-        }, 100);
-      }
+      // Always refresh the instructor list to ensure consistency
+      setTimeout(() => {
+        fetchInstructors();
+      }, 100);
     } catch (err) {
       const errorMsg = err.response?.data?.error || err.response?.data?.message || err.message || 'Unknown error';
       console.error(`Error saving instructor: ${errorMsg}`, {
@@ -321,13 +314,16 @@ function ManageInstructors() {
     // Handle the active status - backend consistently uses 'isActive'
     const isActive = user.isActive ?? true;
     
+    // Get departmentId from user.departmentId (primary source) or fallback to instructor.department
+    const departmentId = user.departmentId || instructor.department?.departmentId || '';
+    
     const instructorData = {
       instructorId: instructor.instructorId,
       userId: user.userId,
       firstName,
       lastName,
       email: user.email,
-      departmentId: instructor.department?.departmentId || '',
+      departmentId: departmentId,
       isActive
     };
     setCurrentInstructor(instructorData);
@@ -397,21 +393,16 @@ function ManageInstructors() {
             </td>
             <td>
               <div className="btn-group">
-                <Button
-                  variant="outline-success"
-                  size="sm"
-                  onClick={() => handleAssignCourse(instructor)}
-                  title="Assign Course"
-                >
-                  <FaBook />
-                </Button>
-                <Button 
-                  variant="outline-primary" 
-                  size="sm"
-                  onClick={() => handleEditInstructor(instructor)}
-                >
-                  <FaEdit />
-                </Button>
+
+                <div className="btn-group">
+                  <Button
+                    variant="outline-primary"
+                    size="sm"
+                    onClick={() => handleEditInstructor(instructor)}
+                  >
+                    <FaEdit />
+                  </Button>
+                </div>
               </div>
             </td>
           </tr>
@@ -428,6 +419,7 @@ function ManageInstructors() {
                       variant="primary"
                       size="sm"
                       onClick={() => handleAssignCourse(instructor)}
+                      disabled={!isActive}
                     >
                       <FaPlus className="me-1" />
                       Assign Course
@@ -435,28 +427,40 @@ function ManageInstructors() {
                   </div>
                   {instructorCourses[instructor.instructorId]?.length > 0 ? (
                     <Row>
-                      {instructorCourses[instructor.instructorId].map(courseInstructor => (
-                        <Col md={4} key={courseInstructor.course.id} className="mb-2">
-                          <Card size="sm">
-                            <Card.Body className="p-2">
-                              <div className="d-flex justify-content-between align-items-start">
-                                <div>
-                                  <strong>{courseInstructor.course.code}</strong>
-                                  <div className="small">{courseInstructor.course.title}</div>
-                                  <div className="small text-muted">{courseInstructor.role}</div>
+                      {instructorCourses[instructor.instructorId].map(courseInstructor => {
+                        const course = courseInstructor.course;
+                        const courseId = course.id || course.courseId;
+                        const courseCode = course.code || course.courseCode;
+                        const courseTitle = course.title || course.courseName;
+                        
+                        return (
+                          <Col md={4} key={courseId} className="mb-2">
+                            <Card size="sm">
+                              <Card.Body className="p-2">
+                                <div className="d-flex justify-content-between align-items-start">
+                                  <div>
+                                    <strong>{courseCode}</strong>
+                                    <div className="small">{courseTitle}</div>
+                                    <div className="small text-muted">{courseInstructor.role}</div>
+                                    {course.isActive ? (
+                                      <div className="small text-success">Active</div>
+                                    ) : (
+                                      <div className="small text-warning">Inactive</div>
+                                    )}
+                                  </div>
+                                  <Button
+                                    variant="outline-danger"
+                                    size="sm"
+                                    onClick={() => removeCourseFromInstructor(instructor.instructorId, courseId)}
+                                  >
+                                    <FaTimes />
+                                  </Button>
                                 </div>
-                                <Button
-                                  variant="outline-danger"
-                                  size="sm"
-                                  onClick={() => removeCourseFromInstructor(instructor.instructorId, courseInstructor.course.id)}
-                                >
-                                  <FaTimes />
-                                </Button>
-                              </div>
-                            </Card.Body>
-                          </Card>
-                        </Col>
-                      ))}
+                              </Card.Body>
+                            </Card>
+                          </Col>
+                        );
+                      })}
                     </Row>
                   ) : (
                     <div className="text-center py-3">
@@ -465,6 +469,7 @@ function ManageInstructors() {
                         variant="outline-primary"
                         size="sm"
                         onClick={() => handleAssignCourse(instructor)}
+                        disabled={!(user.isActive ?? true)}
                       >
                         <FaPlus className="me-1" />
                         Assign First Course
@@ -478,7 +483,7 @@ function ManageInstructors() {
         </React.Fragment>
       );
     });
-  }, [instructors]);
+  }, [instructors, expandedInstructors, instructorCourses]);
 
   // Clear success message after 5 seconds
   useEffect(() => {
@@ -685,20 +690,30 @@ function ManageInstructors() {
             <strong>Available Courses:</strong>
           </div>
           {courses.filter(course => {
-            const assignedCourses = instructorCourses[selectedInstructor?.instructorId] || [];
-            return !assignedCourses.some(ic => ic.course.id === course.id);
+            if (!course.isActive) return false; // Only show active courses
+            
+            // Only show courses from the same department as the instructor
+            const instructorDeptId = selectedInstructor?.user?.departmentId;
+            if (instructorDeptId && course.departmentId !== instructorDeptId) {
+              return false;
+            }
+            
+            const instructorId = selectedInstructor?.instructorId || selectedInstructor?.user?.userId;
+            const assignedCourses = instructorCourses[instructorId] || [];
+            return !assignedCourses.some(ic => ic.course.id === course.id || ic.course.courseId === course.courseId);
           }).map(course => (
-            <Card key={course.id} className="mb-2">
+            <Card key={course.id || course.courseId} className="mb-2">
               <Card.Body className="p-2">
                 <div className="d-flex justify-content-between align-items-center">
                   <div>
-                    <strong>{course.code} - {course.title}</strong>
+                    <strong>{course.code || course.courseCode} - {course.title || course.courseName}</strong>
                     <div className="small text-muted">{course.description}</div>
+                    <div className="small text-success">Active Course</div>
                   </div>
                   <Button
                     variant="outline-primary"
                     size="sm"
-                    onClick={() => assignCourseToInstructor(course.id)}
+                    onClick={() => assignCourseToInstructor(course.id || course.courseId)}
                   >
                     Assign
                   </Button>
@@ -707,11 +722,25 @@ function ManageInstructors() {
             </Card>
           ))}
           {courses.filter(course => {
-            const assignedCourses = instructorCourses[selectedInstructor?.instructorId] || [];
-            return !assignedCourses.some(ic => ic.course.id === course.id);
+            if (!course.isActive) return false;
+            
+            // Only show courses from the same department as the instructor
+            const instructorDeptId = selectedInstructor?.user?.departmentId;
+            if (instructorDeptId && course.departmentId !== instructorDeptId) {
+              return false;
+            }
+            
+            const instructorId = selectedInstructor?.instructorId || selectedInstructor?.user?.userId;
+            const assignedCourses = instructorCourses[instructorId] || [];
+            return !assignedCourses.some(ic => ic.course.id === course.id || ic.course.courseId === course.courseId);
           }).length === 0 && (
             <div className="text-center py-3">
-              <p className="text-muted">All available courses are already assigned to this instructor.</p>
+              <p className="text-muted">
+                {selectedInstructor?.user?.departmentId ? 
+                  'All active courses in this department are already assigned to this instructor.' :
+                  'Please assign this instructor to a department first.'
+                }
+              </p>
             </div>
           )}
         </Modal.Body>

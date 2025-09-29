@@ -65,6 +65,12 @@ spring:
                 - Path=/api/submissions/**
               filters:
                 - RewritePath=/api/submissions/(?<segment>.*), /api/submissions/$\{segment}
+            - id: course-service-instructors
+              uri: lb://course-service
+              predicates:
+                - Path=/api/instructors/**
+              filters:
+                - RewritePath=/api/instructors/(?<segment>.*), /api/instructors/$\{segment}
             - id: user-service-dashboard
               uri: lb://user-service
               predicates:
