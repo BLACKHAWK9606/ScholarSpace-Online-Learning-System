@@ -2,13 +2,12 @@ spring:
   application:
     name: api-gateway
   config:
-    import: optional:configserver:http://localhost:8888
+    import: optional:configserver:http://${CONFIG_SERVER_HOST:localhost}:8888
   cloud:
     inetutils:
       preferred-networks:
-        - 127.0.0
-      default-hostname: localhost
-      default-ip-address: 127.0.0.1
+        - 172.18.0
+      default-hostname: ${HOSTNAME:gateway}
     gateway:
       server:
         webflux:
@@ -78,7 +77,7 @@ spring:
               filters:
                 - RewritePath=/api/dashboard/(?<segment>.*), /api/dashboard/$\{segment}
             - id: discovery-service
-              uri: http://localhost:8761
+              uri: http://${EUREKA_HOST:discovery}:8761
               predicates:
                 - Path=/eureka/web
               filters:
@@ -100,13 +99,12 @@ server:
 eureka:
   client:
     service-url:
-      defaultZone: http://localhost:8761/eureka
+      defaultZone: http://${EUREKA_HOST:discovery}:8761/eureka
     fetch-registry: true
     register-with-eureka: true
   instance:
-    prefer-ip-address: true
-    ip-address: 127.0.0.1
-    hostname: localhost
+    prefer-ip-address: false
+    hostname: ${HOSTNAME:gateway}
     lease-renewal-interval-in-seconds: 10
     lease-expiration-duration-in-seconds: 30
 

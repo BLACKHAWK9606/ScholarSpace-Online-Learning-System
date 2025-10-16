@@ -11,9 +11,8 @@ spring:
           search-locations: classpath:/config
     inetutils:
       preferred-networks:
-        - 127.0.0
-      default-hostname: localhost
-      default-ip-address: 127.0.0.1
+        - 172.18.0
+      default-hostname: ${HOSTNAME:config-server}
   profiles:
     active: native
 

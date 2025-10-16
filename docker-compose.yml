@@ -1,0 +1,260 @@
+services:
+  postgres:
+    image: postgres:15
+    container_name: postgres
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=Jayjay_1
+      - POSTGRES_DB=postgres
+    volumes:
+      - ./init-db:/docker-entrypoint-initdb.d
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - scholarspace-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  config-server:
+    build:
+      context: ./config-server
+      dockerfile: Dockerfile
+      args:
+        - MAVEN_OPTS=-Dhttp.maxConnections=10 -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
+    container_name: config-server
+    ports:
+      - "8888:8888"
+    environment:
+      - HOSTNAME=config-server
+      - JAVA_OPTS=-Xmx512m -Xms256m
+    networks:
+      - scholarspace-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8888/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
+
+  discovery:
+    build:
+      context: ./discovery
+      dockerfile: Dockerfile
+      args:
+        - MAVEN_OPTS=-Dhttp.maxConnections=10 -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
+    container_name: discovery
+    ports:
+      - "8761:8761"
+    environment:
+      - CONFIG_SERVER_HOST=config-server
+      - HOSTNAME=discovery
+      - EUREKA_HOSTNAME=discovery
+      - JAVA_OPTS=-Xmx512m -Xms256m
+    networks:
+      - scholarspace-network
+    depends_on:
+      config-server:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8761/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 90s
+
+  gateway:
+    build:
+      context: ./gateway
+      dockerfile: Dockerfile
+      args:
+        - MAVEN_OPTS=-Dhttp.maxConnections=10 -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
+    container_name: gateway
+    ports:
+      - "8080:8080"
+    environment:
+      - CONFIG_SERVER_HOST=config-server
+      - EUREKA_HOST=discovery
+      - HOSTNAME=gateway
+      - JAVA_OPTS=-Xmx512m -Xms256m
+    networks:
+      - scholarspace-network
+    depends_on:
+      config-server:
+        condition: service_healthy
+      discovery:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 120s
+
+  user-service:
+    build:
+      context: ./user-service
+      dockerfile: Dockerfile
+      args:
+        - MAVEN_OPTS=-Dhttp.maxConnections=10 -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
+    container_name: user-service
+    ports:
+      - "8090:8090"
+    environment:
+      - CONFIG_SERVER_HOST=config-server
+      - EUREKA_HOST=discovery
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=scholarspace_users
+      - DB_USERNAME=postgres
+      - DB_PASSWORD=Jayjay_1
+      - HOSTNAME=user-service
+      - JAVA_OPTS=-Xmx512m -Xms256m
+    networks:
+      - scholarspace-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+      config-server:
+        condition: service_healthy
+      discovery:
+        condition: service_healthy
+      gateway:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8090/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 120s
+
+  institution-service:
+    build:
+      context: ./institution-service
+      dockerfile: Dockerfile
+      args:
+        - MAVEN_OPTS=-Dhttp.maxConnections=10 -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
+    container_name: institution-service
+    ports:
+      - "8091:8091"
+    environment:
+      - CONFIG_SERVER_HOST=config-server
+      - EUREKA_HOST=discovery
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=scholarspace_institutions
+      - DB_USERNAME=postgres
+      - DB_PASSWORD=Jayjay_1
+      - HOSTNAME=institution-service
+      - JAVA_OPTS=-Xmx512m -Xms256m
+    networks:
+      - scholarspace-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+      config-server:
+        condition: service_healthy
+      discovery:
+        condition: service_healthy
+      gateway:
+        condition: service_healthy
+      user-service:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8091/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 120s
+
+  course-service:
+    build:
+      context: ./course-service
+      dockerfile: Dockerfile
+      args:
+        - MAVEN_OPTS=-Dhttp.maxConnections=10 -Dmaven.wagon.http.pool=false -Dmaven.wagon.httpconnectionManager.ttlSeconds=120
+    container_name: course-service
+    ports:
+      - "8092:8092"
+    environment:
+      - CONFIG_SERVER_HOST=config-server
+      - EUREKA_HOST=discovery
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=scholarspace_courses
+      - DB_USERNAME=postgres
+      - DB_PASSWORD=Jayjay_1
+      - HOSTNAME=course-service
+      - JAVA_OPTS=-Xmx512m -Xms256m
+    volumes:
+      - course_uploads:/app/uploads
+    networks:
+      - scholarspace-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+      config-server:
+        condition: service_healthy
+      discovery:
+        condition: service_healthy
+      gateway:
+        condition: service_healthy
+      user-service:
+        condition: service_healthy
+      institution-service:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8092/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 120s
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: frontend
+    ports:
+      - "3000:80"
+    networks:
+      - scholarspace-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+      config-server:
+        condition: service_healthy
+      discovery:
+        condition: service_healthy
+      gateway:
+        condition: service_healthy
+      user-service:
+        condition: service_healthy
+      institution-service:
+        condition: service_healthy
+      course-service:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+
+networks:
+  scholarspace-network:
+    driver: bridge
+    name: scholarspace-network
+
+volumes:
+  postgres_data:
+  course_uploads:

@@ -2,22 +2,20 @@ spring:
   application:
     name: discovery-service
   config:
-    import: optional:configserver:http://localhost:8888
+    import: optional:configserver:http://${CONFIG_SERVER_HOST:localhost}:8888
   cloud:
     inetutils:
       preferred-networks:
-        - 127.0.0
-      default-hostname: localhost
-      default-ip-address: 127.0.0.1
+        - 172.18.0
+      default-hostname: ${HOSTNAME:discovery}
 
 server:
   port: 8761
 
 eureka:
   instance:
-    hostname: localhost
+    hostname: ${EUREKA_HOSTNAME:discovery}
     prefer-ip-address: false
-    ip-address: 127.0.0.1
   client:
     register-with-eureka: false
     fetch-registry: false

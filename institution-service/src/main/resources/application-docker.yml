@@ -1,0 +1,16 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:scholarspace_institutions}
+    username: ${DB_USERNAME:postgres}
+    password: ${DB_PASSWORD:password}
+
+  config:
+    import: optional:configserver:http://${CONFIG_SERVER_HOST:config-server}:8888
+
+eureka:
+  client:
+    service-url:
+      defaultZone: http://${EUREKA_HOST:discovery}:8761/eureka
+
+jwt:
+  secret: ${JWT_SECRET:your_secret_key_here_should_be_at_least_32_characters_long}
