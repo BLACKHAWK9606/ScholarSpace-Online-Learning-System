@@ -36,3 +36,59 @@
     transform: rotate(360deg);
   }
 }
+
+/* Login Component Enhancements */
+.login-container {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.login-container .card {
+  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1);
+  border: none;
+}
+
+.login-type-toggle .btn {
+  transition: all 0.3s ease;
+  border-radius: 20px;
+}
+
+.login-type-toggle .btn:hover {
+  transform: translateY(-2px);
+}
+
+.ad-login-info {
+  background: linear-gradient(45deg, #e3f2fd, #f3e5f5);
+  border-left: 4px solid #2196f3;
+}
+
+.database-login-info {
+  background: linear-gradient(45deg, #f1f8e9, #e8f5e8);
+  border-left: 4px solid #4caf50;
+}
+
+/* Animation for login type switch */
+.login-form-transition {
+  transition: all 0.3s ease-in-out;
+}
+
+/* AD Login specific styling */
+.ad-login .form-control {
+  border-color: #2196f3;
+}
+
+.ad-login .input-group-text {
+  background-color: #e3f2fd;
+  border-color: #2196f3;
+  color: #1976d2;
+}
+
+/* Database Login specific styling */
+.database-login .form-control {
+  border-color: #4caf50;
+}
+
+.database-login .input-group-text {
+  background-color: #e8f5e8;
+  border-color: #4caf50;
+  color: #388e3c;
+}

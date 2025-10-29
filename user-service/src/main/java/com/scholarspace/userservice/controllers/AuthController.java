@@ -62,6 +62,41 @@ public class AuthController {
         }
     }
 
+    @PostMapping("/login-ad")
+    @Operation(
+        summary = "Active Directory Login", 
+        description = "Authenticate user against Active Directory. Returns JWT token for subsequent API calls.",
+        requestBody = @io.swagger.v3.oas.annotations.parameters.RequestBody(
+            description = "AD login credentials",
+            content = @Content(
+                mediaType = "application/json",
+                examples = @io.swagger.v3.oas.annotations.media.ExampleObject(
+                    name = "AD Login Example",
+                    value = "{\"email\": \"jadmin@mylab.local\", \"password\": \"Complex123!Pass\"}"
+                )
+            )
+        )
+    )
+    @ApiResponse(responseCode = "200", description = "AD login successful", 
+        content = @Content(mediaType = "application/json",
+            examples = @io.swagger.v3.oas.annotations.media.ExampleObject(
+                value = "{\"token\": \"eyJhbGciOiJIUzI1NiJ9...\", \"userId\": \"1\", \"name\": \"John Admin\", \"email\": \"jadmin@mylab.local\", \"role\": \"ADMIN\", \"authType\": \"AD\"}"
+            )))
+    @ApiResponse(responseCode = "400", description = "Invalid AD credentials or connection error")
+    public ResponseEntity<?> loginWithAD(@RequestBody Map<String, String> loginRequest) {
+        try {
+            String email = loginRequest.get("email");
+            String password = loginRequest.get("password");
+            
+            Map<String, Object> response = authService.loginWithAD(email, password);
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            Map<String, String> errorResponse = new HashMap<>();
+            errorResponse.put("error", e.getMessage());
+            return ResponseEntity.badRequest().body(errorResponse);
+        }
+    }
+
     @PostMapping("/register")
     @Operation(
         summary = "User Registration", 

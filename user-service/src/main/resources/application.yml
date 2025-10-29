@@ -3,6 +3,10 @@ spring:
     name: user-service
   config:
     import: optional:configserver:http://localhost:8888
+  data:
+    ldap:
+      repositories:
+        enabled: false
   cloud:
     inetutils:
       preferred-networks:
@@ -52,6 +56,8 @@ logging:
   level:
     com.scholarspace.userservice: DEBUG
     org.springframework.security: DEBUG
+    org.springframework.ldap: DEBUG
+    javax.naming: DEBUG
     org.hibernate.engine.transaction.jta.platform: ERROR
 
 # JWT Configuration
@@ -59,6 +65,17 @@ app:
   jwt:
     secret: your_secret_key_here_should_be_at_least_32_characters_long
     expiration: 86400000
+
+# LDAP Configuration for Active Directory
+ldap:
+  url: ldap://192.168.154.5:389
+  base: DC=mylab,DC=local
+  username: scholarspace-svc@mylab.local
+  password: ServicePass123!
+  userSearchBase: OU=ScholarSpace
+  userSearchFilter: (|(userPrincipalName={0})(sAMAccountName={0}))
+  groupSearchBase: OU=ScholarSpace
+  groupRoleAttribute: cn
 
 # Swagger Configuration
 springdoc:

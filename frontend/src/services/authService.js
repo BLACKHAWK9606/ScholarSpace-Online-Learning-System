@@ -13,7 +13,7 @@ const instance = axios.create({
 instance.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('token');
-    const publicEndpoints = ['login', 'register', 'forgot-password', 'reset-password'];
+    const publicEndpoints = ['login', 'login-ad', 'register', 'forgot-password', 'reset-password'];
     if (token && !publicEndpoints.includes(config.url)) {
       config.headers['Authorization'] = `Bearer ${token}`;
     }
@@ -41,6 +41,26 @@ class AuthService {
       return response.data;
     } catch (error) {
       console.error('Login error', error.response ? error.response.data : error.message);
+      throw error;
+    }
+  }
+
+  async loginWithAD(email, password) {
+    try {
+      const response = await instance.post('login-ad', { email, password });
+      
+      if (response.data.token) {
+        const loginData = {
+          ...response.data,
+          loginTime: Date.now()
+        };
+        localStorage.setItem('user', JSON.stringify(loginData));
+        localStorage.setItem('token', response.data.token);
+        sessionStorage.setItem('sessionActive', 'true');
+      }
+      return response.data;
+    } catch (error) {
+      console.error('AD Login error', error.response ? error.response.data : error.message);
       throw error;
     }
   }

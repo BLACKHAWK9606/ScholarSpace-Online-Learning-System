@@ -74,6 +74,19 @@ export function AuthProvider({ children }) {
     }
   };
 
+  // AD Login function
+  const loginWithAD = async (email, password) => {
+    try {
+      const userData = await AuthService.loginWithAD(email, password);
+      setUser(userData);
+      setIsAuthenticated(true);
+      return userData;
+    } catch (error) {
+      console.error('AD Login error:', error);
+      throw error;
+    }
+  };
+
   // Logout function
   const logout = () => {
     AuthService.logout();
@@ -130,6 +143,7 @@ export function AuthProvider({ children }) {
     isAuthenticated,
     isLoading,
     login,
+    loginWithAD,
     logout,
     register,
     updateUser,
